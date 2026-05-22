@@ -1,0 +1,10 @@
+{
+  "finding_id": "2024-07-loopfi-due-to-missing-whennotpaused-modifiers-o",
+  "commit_kind": "fix",
+  "commit_sha": "1965b8e310ff99078fdde1ea85d18fb078fb4232",
+  "halmos_outcome": "BUILD_FAILED",
+  "counterexamples": null,
+  "halmos_stdout": "Error: Encountered invalid solc version in test\\bugzy\\Test2024_07_loopfi_due_to_missing_whennotpaused_modifiers_o.t.sol: No solc version exists that matches the version requirement: ^0.8.19\nError: Encountered invalid solc version in test\\bugzy\\Test2024_07_loopfi_due_to_missing_whennotpaused_modifiers_o.t.sol: No solc version exists that matches the version requirement: ^0.8.19\n",
+  "duration_seconds": 36.79280440002913,
+  "ran_at": "2026-05-22T14:20:47.105206+00:00"
+}

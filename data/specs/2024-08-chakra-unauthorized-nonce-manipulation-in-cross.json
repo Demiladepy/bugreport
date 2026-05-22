@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-08-chakra-unauthorized-nonce-manipulation-in-cross",
+  "spec_natural_language": "function send_cross_chain_msg MUST only allow callers with HANDLER_ROLE to increment nonces and send cross-chain messages",
+  "spec_type": "access_control",
+  "function_signature": "send_cross_chain_msg(string,address,uint256,uint8,bytes)",
+  "violated_invariant": {
+    "precondition": "caller does not have HANDLER_ROLE",
+    "should_revert": true,
+    "expected_behavior": "Only addresses with HANDLER_ROLE should be able to call send_cross_chain_msg and increment nonces; unauthorized callers should be rejected"
+  },
+  "halmos_property_sketch": "function check_send_cross_chain_msg_access_control(address caller, string memory to_chain, address from_address, uint256 to_handler, uint8 payload_type, bytes calldata payload) external {\n    // Setup: caller does not have HANDLER_ROLE\n    vm.assume(!chakraSettlement.hasRole(HANDLER_ROLE, caller));\n    \n    uint256 nonceBefore = chakraSettlement.nonces(from_address);\n    \n    vm.prank(caller);\n    try chakraSettlement.send_cross_chain_msg(to_chain, from_address, to_handler, payload_type, payload) {\n        // If call succeeds without HANDLER_ROLE, invariant is violated\n        assert(false);\n    } catch {\n        // Expected: should revert for unauthorized caller\n    }\n    \n    // Nonce should not have changed\n    assert(chakraSettlement.nonces(from_address) == nonceBefore);\n}",
+  "affected_function_lines": [
+    118,
+    118
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding explicitly states that send_cross_chain_msg allows 'any user' to increment nonces, and the recommendation includes adding 'onlyRole(HANDLER_ROLE)' modifier, indicating the access control check is missing. The vulnerability is clearly about unauthorized callers being able to manipulate nonces.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:09:04.483244+00:00"
+}

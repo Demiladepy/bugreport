@@ -1,0 +1,98 @@
+SYSTEM:
+You generate Halmos symbolic execution tests for Foundry that compile against REAL protocol repos.
+
+CANONICAL EXAMPLE (imports real contract from repo — NOT a mock copy):
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
+
+import {Test} from "forge-std/Test.sol";
+import {SymTest} from "halmos-cheatcodes/SymTest.sol";
+import {SetterTopNPoolsStrategy} from "contracts/SetterTopNPoolsStrategy.sol";
+
+/// Dependency stub only — NOT the contract under test.
+contract MockAVM {
+    uint256 public topN;
+    address public executor;
+    constructor(address _executor, uint256 _topN) { executor = _executor; topN = _topN; }
+}
+
+contract Test2025_05_blackhole_H_10 is Test, SymTest {
+    SetterTopNPoolsStrategy strategy;
+    address owner;
+
+    function setUp() public {
+        owner = makeAddr("owner");
+        MockAVM avm = new MockAVM(makeAddr("executor"), 10);
+        vm.prank(owner);
+        strategy = new SetterTopNPoolsStrategy(makeAddr("voter"), address(avm));
+    }
+
+    function check_ownerCanSetTopNPools() public {
+        vm.prank(owner);
+        address[] memory pools = new address[](0);
+        (bool success,) = address(strategy).call(
+            abi.encodeWithSelector(SetterTopNPoolsStrategy.setTopNPools.selector, pools)
+        );
+        assert(success);
+    }
+}
+
+
+CRITICAL RULES:
+- Output ONLY valid Solidity source. No markdown fences.
+- Import SymTest from "halmos-cheatcodes/SymTest.sol" (NOT halmos/SymTest.sol).
+- Import the REAL target contract: `import {ContractName} from "<affected_file_path>";`
+- NEVER define a mock/fake/stub copy of the contract under test (no MockVulnerable*, no reimplementing target functions).
+- Small dependency stubs (e.g. constructor deps like AVM) are OK if the real repo needs them — keep minimal.
+- Inherit Test, SymTest. Exactly ONE `check_*` function.
+- Use `svm.createAddress` for symbolic callers and `vm.assume` for constraints.
+- Assertion direction: property MUST hold on FIXED code (Halmos PASS), fail on VULNERABLE (Halmos FAIL).
+- Match pragma to target contract source when provided.
+- Use repo-relative import paths exactly as given (forward slashes).
+- Deploy/instantiate the real contract in setUp(); do not test against interfaces only unless unavoidable.
+
+
+USER:
+Generate a Halmos test file for this finding.
+
+Finding ID: 2024-09-fenix-finance-the-killgauge-function-should-set-the-we
+Title: The `killGauge` function should set the `weightsPerEpoch` value to zero
+Repo URL: https://github.com/code-423n4/2024-09-fenix-finance
+Affected file: contracts/core/VotingEscrowUpgradeableV2.sol
+Import path: contracts/core/VotingEscrowUpgradeableV2.sol
+Contract name: VotingEscrowUpgradeableV2
+Vulnerable commit: None
+Pragma hint: ^0.8.20
+
+Extracted spec:
+{
+  "finding_id": "2024-09-fenix-finance-the-killgauge-function-should-set-the-we",
+  "spec_natural_language": "function killGauge(address) MUST set weightsPerEpoch[epochTimestamp][state.pool] to zero when killing a gauge to prevent double-subtraction and incorrect reward distribution",
+  "spec_type": "state_machine",
+  "function_signature": "killGauge(address)",
+  "violated_invariant": {
+    "precondition": "a gauge is being killed and has non-zero weightsPerEpoch",
+    "should_revert": false,
+    "expected_behavior": "weightsPerEpoch[epochTimestamp][state.pool] should be set to zero after subtracting from totalWeightsPerEpoch"
+  },
+  "halmos_property_sketch": "function check_killGauge_zeros_weights(address gauge) public {\n    // Setup: gauge exists and has non-zero weight\n    vm.assume(gaugesState[gauge].isGauge);\n    vm.assume(gaugesState[gauge].isAlive);\n    address pool = gaugesState[gauge].pool;\n    uint256 epochTs = _epochTimestamp();\n    uint256 weightBefore = weightsPerEpoch[epochTs][pool];\n    vm.assume(weightBefore > 0);\n    \n    // Action: kill the gauge as governance\n    vm.prank(governance);\n    killGauge(gauge);\n    \n    // Postcondition: weightsPerEpoch must be zero\n    uint256 weightAfter = weightsPerEpoch[epochTs][pool];\n    assert(weightAfter == 0);\n}",
+  "affected_function_lines": [
+    227,
+    241
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The report clearly identifies the specific function (killGauge) and the exact state variable (weightsPerEpoch) that should be zeroed but is not. The line numbers and fix are explicitly provided, making the invariant unambiguous.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:08:20.411970+00:00"
+}
+
+Target function: killGauge(address)
+Precondition: a gauge is being killed and has non-zero weightsPerEpoch
+should_revert: False
+
+REAL CONTRACT SOURCE (from repo at vulnerable commit):
+(source unavailable — import from affected file path)
+
+Test contract name: Test2024_09_fenix_finance_the_killgauge_function_should_set_the_we
+
+Generate the complete .t.sol file. Import the real contract at "contracts/core/VotingEscrowUpgradeableV2.sol".

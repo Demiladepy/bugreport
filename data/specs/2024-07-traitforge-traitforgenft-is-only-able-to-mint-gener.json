@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-07-traitforge-traitforgenft-is-only-able-to-mint-gener",
+  "spec_natural_language": "function initializeAlphaIndices MUST NOT revert when called by the allowedCaller (TraitForgeNft contract)",
+  "spec_type": "access_control",
+  "function_signature": "initializeAlphaIndices()",
+  "violated_invariant": {
+    "precondition": "msg.sender is the allowedCaller (TraitForgeNft contract)",
+    "should_revert": false,
+    "expected_behavior": "The function should execute successfully when called by the allowedCaller, not only when called by the owner"
+  },
+  "halmos_property_sketch": "function check_initializeAlphaIndices_allowedCaller(address caller) public {\n    vm.assume(caller == entropyGenerator.allowedCaller());\n    vm.prank(caller);\n    // Should not revert when called by allowedCaller\n    entropyGenerator.initializeAlphaIndices();\n    assert(true); // If we reach here, access control is correct\n}",
+  "affected_function_lines": [
+    206,
+    217
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly identifies that initializeAlphaIndices uses onlyOwner modifier but should also allow the allowedCaller (TraitForgeNft contract) to call it. The exact line numbers are provided in the report (line 206 in EntropyGenerator.sol), and the fix explicitly shows adding onlyAllowedCallerOrOwner modifier. The invariant is unambiguous: allowedCaller should be authorized to call this function.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:09:11.835023+00:00"
+}

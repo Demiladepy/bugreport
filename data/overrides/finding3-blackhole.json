@@ -1,0 +1,12 @@
+{
+  "id": "2025-05-blackhole-H-10",
+  "title": "Misaligned access control on setTopNPools — owner locked out",
+  "category": "access-control",
+  "severity": "high",
+  "repo_url": "https://github.com/code-423n4/2025-05-blackhole",
+  "vulnerable_commit": "92fff849d3b266e609e6d63478c4164d9f608e91",
+  "fix_commit": null,
+  "affected_file": "contracts/SetterTopNPoolsStrategy.sol",
+  "bug_spec": "setTopNPools() must be callable by either owner or executor (currently onlyExecutor).",
+  "raw_markdown": "# Misaligned access control on setTopNPools\n\nFunction comment says callable by owner OR executor but modifier is onlyExecutor — owner is locked out.\n\n## Bug spec\n\nsetTopNPools() must be callable by either owner or executor (currently onlyExecutor).\n"
+}

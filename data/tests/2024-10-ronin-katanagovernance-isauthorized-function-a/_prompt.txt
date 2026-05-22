@@ -1,0 +1,98 @@
+SYSTEM:
+You generate Halmos symbolic execution tests for Foundry that compile against REAL protocol repos.
+
+CANONICAL EXAMPLE (imports real contract from repo — NOT a mock copy):
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
+
+import {Test} from "forge-std/Test.sol";
+import {SymTest} from "halmos-cheatcodes/SymTest.sol";
+import {SetterTopNPoolsStrategy} from "contracts/SetterTopNPoolsStrategy.sol";
+
+/// Dependency stub only — NOT the contract under test.
+contract MockAVM {
+    uint256 public topN;
+    address public executor;
+    constructor(address _executor, uint256 _topN) { executor = _executor; topN = _topN; }
+}
+
+contract Test2025_05_blackhole_H_10 is Test, SymTest {
+    SetterTopNPoolsStrategy strategy;
+    address owner;
+
+    function setUp() public {
+        owner = makeAddr("owner");
+        MockAVM avm = new MockAVM(makeAddr("executor"), 10);
+        vm.prank(owner);
+        strategy = new SetterTopNPoolsStrategy(makeAddr("voter"), address(avm));
+    }
+
+    function check_ownerCanSetTopNPools() public {
+        vm.prank(owner);
+        address[] memory pools = new address[](0);
+        (bool success,) = address(strategy).call(
+            abi.encodeWithSelector(SetterTopNPoolsStrategy.setTopNPools.selector, pools)
+        );
+        assert(success);
+    }
+}
+
+
+CRITICAL RULES:
+- Output ONLY valid Solidity source. No markdown fences.
+- Import SymTest from "halmos-cheatcodes/SymTest.sol" (NOT halmos/SymTest.sol).
+- Import the REAL target contract: `import {ContractName} from "<affected_file_path>";`
+- NEVER define a mock/fake/stub copy of the contract under test (no MockVulnerable*, no reimplementing target functions).
+- Small dependency stubs (e.g. constructor deps like AVM) are OK if the real repo needs them — keep minimal.
+- Inherit Test, SymTest. Exactly ONE `check_*` function.
+- Use `svm.createAddress` for symbolic callers and `vm.assume` for constraints.
+- Assertion direction: property MUST hold on FIXED code (Halmos PASS), fail on VULNERABLE (Halmos FAIL).
+- Match pragma to target contract source when provided.
+- Use repo-relative import paths exactly as given (forward slashes).
+- Deploy/instantiate the real contract in setUp(); do not test against interfaces only unless unavoidable.
+
+
+USER:
+Generate a Halmos test file for this finding.
+
+Finding ID: 2024-10-ronin-katanagovernance-isauthorized-function-a
+Title: KatanaGovernance::_isAuthorized function allows user to perform action even after expiry time has passed.
+Repo URL: https://github.com/code-423n4/2024-10-ronin
+Affected file: src/governance/KatanaGovernance.sol
+Import path: src/governance/KatanaGovernance.sol
+Contract name: KatanaGovernance
+Vulnerable commit: 27f9d28e00958bf3494fa405a8a5acdcd5ecdc5d
+Pragma hint: ^0.8.20
+
+Extracted spec:
+{
+  "finding_id": "2024-10-ronin-katanagovernance-isauthorized-function-a",
+  "spec_natural_language": "function _isAuthorized MUST return false when block.timestamp is greater than or equal to expiry time (unless expiry equals AUTHORIZED constant)",
+  "spec_type": "access_control",
+  "function_signature": "_isAuthorized(Permission storage,address)",
+  "violated_invariant": {
+    "precondition": "expiry != UNAUTHORIZED && expiry != AUTHORIZED && block.timestamp >= expiry",
+    "should_revert": false,
+    "expected_behavior": "Must return false and fall through to check $.allowed[account], not return true"
+  },
+  "halmos_property_sketch": "function check_isAuthorized_expiry(address account, uint256 expiry, uint256 blockTime) public {\n    vm.assume(expiry != UNAUTHORIZED);\n    vm.assume(expiry != AUTHORIZED);\n    vm.assume(blockTime >= expiry);\n    vm.warp(blockTime);\n    \n    // Setup permission with expiry\n    Permission storage perm = _setupPermission(expiry);\n    perm.allowed[account] = false;\n    \n    bool result = _isAuthorized(perm, account);\n    \n    // After expiry, if account is not in allowed list, should return false\n    assert(!result);\n}",
+  "affected_function_lines": [
+    375,
+    381
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly identifies the exact line and logic flaw: the condition uses '>' instead of '<' for timestamp comparison against expiry, causing authorization to persist after expiry. The fix is explicitly shown in the recommended mitigation.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:07:02.078135+00:00"
+}
+
+Target function: _isAuthorized(Permission storage,address)
+Precondition: expiry != UNAUTHORIZED && expiry != AUTHORIZED && block.timestamp >= expiry
+should_revert: False
+
+REAL CONTRACT SOURCE (from repo at vulnerable commit):
+(source unavailable — import from affected file path)
+
+Test contract name: Test2024_10_ronin_katanagovernance_isauthorized_function_a
+
+Generate the complete .t.sol file. Import the real contract at "src/governance/KatanaGovernance.sol".

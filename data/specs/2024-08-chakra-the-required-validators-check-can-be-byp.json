@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-08-chakra-the-required-validators-check-can-be-byp",
+  "spec_natural_language": "function verifyECDSA MUST reject signatures array when the same validator address appears more than once (either through duplicate signatures or signature malleability)",
+  "spec_type": "access_control",
+  "function_signature": "verifyECDSA(bytes32,bytes)",
+  "violated_invariant": {
+    "precondition": "signatures array contains multiple signatures from the same validator address",
+    "should_revert": true,
+    "expected_behavior": "Each counted validator signature must be from a distinct signer address; duplicate signers should not increment the validator count"
+  },
+  "halmos_property_sketch": "function check_no_duplicate_validators(bytes32 msgHash, bytes calldata signatures) public view {\n    // Setup: create signatures array with same signature repeated required_validators times\n    // The same valid validator signature is duplicated\n    uint256 len = signatures.length;\n    address[] memory seenValidators = new address[](len / 65);\n    uint256 uniqueCount = 0;\n    \n    for (uint256 i = 0; i < len; i += 65) {\n        bytes memory sig = signatures[i:i + 65];\n        address recovered = msgHash.recover(sig);\n        \n        // Check if this validator was already seen\n        bool isDuplicate = false;\n        for (uint256 j = 0; j < uniqueCount; j++) {\n            if (seenValidators[j] == recovered) {\n                isDuplicate = true;\n                break;\n            }\n        }\n        if (!isDuplicate && validators[recovered]) {\n            seenValidators[uniqueCount++] = recovered;\n        }\n    }\n    \n    // Property: if verifyECDSA returns true, uniqueCount must be >= required_validators\n    bool result = verifier.verifyECDSA(msgHash, signatures);\n    if (result) {\n        assert(uniqueCount >= required_validators);\n    }\n}",
+  "affected_function_lines": [
+    186,
+    214
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly identifies that verifyECDSA does not check for duplicate validators in the signatures array, allowing a single compromised validator to submit the same signature multiple times to bypass the required_validators threshold. The affected lines are explicitly referenced in the report.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:07:46.693523+00:00"
+}

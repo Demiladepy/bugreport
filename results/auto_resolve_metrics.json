@@ -1,0 +1,230 @@
+{
+  "generated_at": "2026-05-21T21:30:40.202628+00:00",
+  "finding_count": 20,
+  "aggregate_by_field": {
+    "repo_url": {
+      "auto": 20,
+      "manual": 0,
+      "auto_pct": 100.0
+    },
+    "vulnerable_commit": {
+      "auto": 17,
+      "manual": 3,
+      "auto_pct": 85.0
+    },
+    "fix_commit": {
+      "auto": 15,
+      "manual": 5,
+      "auto_pct": 75.0
+    },
+    "affected_file": {
+      "auto": 20,
+      "manual": 0,
+      "auto_pct": 100.0
+    }
+  },
+  "overall_auto_resolve_pct": 90.0,
+  "per_finding": [
+    {
+      "id": "2023-06-llama-H-02",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 4
+    },
+    {
+      "id": "2024-07-basin-H-01",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "manual",
+        "affected_file": "auto"
+      },
+      "auto_count": 3
+    },
+    {
+      "id": "2025-05-blackhole-H-10",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "manual",
+        "affected_file": "auto"
+      },
+      "auto_count": 3
+    },
+    {
+      "id": "2024-10-ronin-missing-authorization-check-in-increasel",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "manual",
+        "affected_file": "auto"
+      },
+      "auto_count": 3
+    },
+    {
+      "id": "2024-10-ronin-katanagovernance-isauthorized-function-a",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "manual",
+        "affected_file": "auto"
+      },
+      "auto_count": 3
+    },
+    {
+      "id": "2024-08-chakra-missing-access-control-in-settlement-ini",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 4
+    },
+    {
+      "id": "2024-08-chakra-unprotected-initializer-in-tokenroles-in",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 4
+    },
+    {
+      "id": "2024-08-chakra-an-attacker-can-steal-ownership-of-imple",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "manual",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 3
+    },
+    {
+      "id": "2024-08-chakra-default-admin-role-not-revoked-on-owners",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 4
+    },
+    {
+      "id": "2024-08-chakra-the-required-validators-check-can-be-byp",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 4
+    },
+    {
+      "id": "2024-07-loopfi-due-to-missing-whennotpaused-modifiers-o",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 4
+    },
+    {
+      "id": "2024-07-traitforge-initializealphaindices-uses-the-wrong-mo",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 4
+    },
+    {
+      "id": "2024-07-traitforge-H-1",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 4
+    },
+    {
+      "id": "2024-09-fenix-finance-the-killgauge-function-should-set-the-we",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "manual",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 3
+    },
+    {
+      "id": "2024-10-kleidi-missing-pause-time-checks-in-updatepause",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 4
+    },
+    {
+      "id": "2023-11-kelp-lack-of-deletion-mechanism-for-assets-po",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 4
+    },
+    {
+      "id": "2024-08-chakra-missing-access-control-over-tokenroles-t",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 4
+    },
+    {
+      "id": "2024-10-ronin-unauthorized-liquidity-manipulation-in-n",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "manual",
+        "affected_file": "auto"
+      },
+      "auto_count": 3
+    },
+    {
+      "id": "2024-08-chakra-unauthorized-nonce-manipulation-in-cross",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "auto",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 4
+    },
+    {
+      "id": "2024-07-traitforge-traitforgenft-is-only-able-to-mint-gener",
+      "fields": {
+        "repo_url": "auto",
+        "vulnerable_commit": "manual",
+        "fix_commit": "auto",
+        "affected_file": "auto"
+      },
+      "auto_count": 3
+    }
+  ],
+  "notes": "fix_commit is expected to need manual resolution for most C4 contests (mitigation commits rarely linked in findings)."
+}

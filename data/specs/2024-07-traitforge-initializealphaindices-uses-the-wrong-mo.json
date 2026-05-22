@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-07-traitforge-initializealphaindices-uses-the-wrong-mo",
+  "spec_natural_language": "function initializeAlphaIndices MUST be callable by TraitForgeNft contract (the allowedCaller) when TraitForgeNft calls _incrementGeneration during minting",
+  "spec_type": "access_control",
+  "function_signature": "initializeAlphaIndices()",
+  "violated_invariant": {
+    "precondition": "caller is the TraitForgeNft contract (allowedCaller) but not the owner",
+    "should_revert": false,
+    "expected_behavior": "The function should succeed when called by the allowedCaller (TraitForgeNft contract), not just the owner"
+  },
+  "halmos_property_sketch": "function check_initializeAlphaIndices_callable_by_allowedCaller(address caller) public {\n    // Setup: caller is the allowedCaller but not the owner\n    vm.assume(caller == entropyGenerator.allowedCaller());\n    vm.assume(caller != entropyGenerator.owner());\n    vm.assume(caller != address(0));\n    \n    vm.prank(caller);\n    // BUG: This will revert because onlyOwner modifier blocks allowedCaller\n    // FIXED: Should succeed because allowedCaller should be permitted\n    try entropyGenerator.initializeAlphaIndices() {\n        // Expected: should succeed\n        assert(true);\n    } catch {\n        // Bug: reverts when called by allowedCaller\n        assert(false);\n    }\n}",
+  "affected_function_lines": [
+    206,
+    206
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly identifies that initializeAlphaIndices uses onlyOwner modifier but should be callable by the allowedCaller (TraitForgeNft contract). The TraitForgeNft contract calls this function via _incrementGeneration but is not the owner, causing the call to fail. The invariant is that the allowedCaller should be able to call this function.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:08:03.312492+00:00"
+}

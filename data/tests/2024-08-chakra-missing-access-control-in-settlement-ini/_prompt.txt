@@ -1,0 +1,284 @@
+SYSTEM:
+You generate Halmos symbolic execution tests for Foundry that compile against REAL protocol repos.
+
+CANONICAL EXAMPLE (imports real contract from repo — NOT a mock copy):
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
+
+import {Test} from "forge-std/Test.sol";
+import {SymTest} from "halmos-cheatcodes/SymTest.sol";
+import {SetterTopNPoolsStrategy} from "contracts/SetterTopNPoolsStrategy.sol";
+
+/// Dependency stub only — NOT the contract under test.
+contract MockAVM {
+    uint256 public topN;
+    address public executor;
+    constructor(address _executor, uint256 _topN) { executor = _executor; topN = _topN; }
+}
+
+contract Test2025_05_blackhole_H_10 is Test, SymTest {
+    SetterTopNPoolsStrategy strategy;
+    address owner;
+
+    function setUp() public {
+        owner = makeAddr("owner");
+        MockAVM avm = new MockAVM(makeAddr("executor"), 10);
+        vm.prank(owner);
+        strategy = new SetterTopNPoolsStrategy(makeAddr("voter"), address(avm));
+    }
+
+    function check_ownerCanSetTopNPools() public {
+        vm.prank(owner);
+        address[] memory pools = new address[](0);
+        (bool success,) = address(strategy).call(
+            abi.encodeWithSelector(SetterTopNPoolsStrategy.setTopNPools.selector, pools)
+        );
+        assert(success);
+    }
+}
+
+
+CRITICAL RULES:
+- Output ONLY valid Solidity source. No markdown fences.
+- Import SymTest from "halmos-cheatcodes/SymTest.sol" (NOT halmos/SymTest.sol).
+- Import the REAL target contract: `import {ContractName} from "<affected_file_path>";`
+- NEVER define a mock/fake/stub copy of the contract under test (no MockVulnerable*, no reimplementing target functions).
+- Small dependency stubs (e.g. constructor deps like AVM) are OK if the real repo needs them — keep minimal.
+- Inherit Test, SymTest. Exactly ONE `check_*` function.
+- Use `svm.createAddress` for symbolic callers and `vm.assume` for constraints.
+- Assertion direction: property MUST hold on FIXED code (Halmos PASS), fail on VULNERABLE (Halmos FAIL).
+- Match pragma to target contract source when provided.
+- Use repo-relative import paths exactly as given (forward slashes).
+- Deploy/instantiate the real contract in setUp(); do not test against interfaces only unless unavoidable.
+
+
+USER:
+Generate a Halmos test file for this finding.
+
+Finding ID: 2024-08-chakra-missing-access-control-in-settlement-ini
+Title: Missing Access Control in _Settlement_init and()  _Settlement_handler_init() Function
+Repo URL: https://github.com/code-423n4/2024-08-chakra
+Affected file: solidity/settlement/contracts/BaseSettlement.sol
+Import path: solidity/settlement/contracts/BaseSettlement.sol
+Contract name: BaseSettlement
+Vulnerable commit: d0d45ae1d26ca1b87034e67180fac07ce9642fd9
+Pragma hint: ^0.8.24
+
+Extracted spec:
+{
+  "finding_id": "2024-08-chakra-missing-access-control-in-settlement-ini",
+  "spec_natural_language": "function _Settlement_init() MUST NOT be callable by unauthorized users after the contract has been initialized",
+  "spec_type": "init_pattern",
+  "function_signature": "_Settlement_init(address,address[],uint256,string,uint256,address)",
+  "violated_invariant": {
+    "precondition": "contract has already been initialized or caller is not the deployer/authorized initializer",
+    "should_revert": true,
+    "expected_behavior": "The function should revert when called by any unauthorized user or when the contract is already initialized"
+  },
+  "halmos_property_sketch": "function check_settlement_init_cannot_be_reinitialized(address attacker, address owner, address[] memory managers, uint256 chainId, string memory chainName, uint256 requiredValidators, address signatureVerifier) public {\n    // Assume contract is already initialized (owner is set)\n    vm.assume(settlement.owner() != address(0));\n    vm.assume(attacker != settlement.owner());\n    \n    vm.prank(attacker);\n    try settlement._Settlement_init(owner, managers, chainId, chainName, requiredValidators, signatureVerifier) {\n        assert(false); // Should not succeed - reinitialization by attacker\n    } catch {\n        // Expected: should revert\n    }\n}",
+  "affected_function_lines": [
+    54,
+    70
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly identifies that _Settlement_init is public without access control, allowing any user to reinitialize the contract. The vulnerability is a classic initialization pattern issue where a public init function can be called multiple times by unauthorized users to manipulate owner and role assignments.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:07:11.614444+00:00"
+}
+
+Target function: _Settlement_init(address,address[],uint256,string,uint256,address)
+Precondition: contract has already been initialized or caller is not the deployer/authorized initializer
+should_revert: True
+
+REAL CONTRACT SOURCE (from repo at vulnerable commit):
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+// Importing various contracts and libraries
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ISettlementSignatureVerifier} from "contracts/interfaces/ISettlementSignatureVerifier.sol";
+
+// BaseSettlement is an abstract contract that inherits from OwnableUpgradeable, UUPSUpgradeable, and AccessControlUpgradeable
+abstract contract BaseSettlement is
+    OwnableUpgradeable,
+    UUPSUpgradeable,
+    AccessControlUpgradeable
+{
+    // Events for adding and removing managers and validators, and changing required validators
+    event ManagerAdded(address indexed owner, address indexed manager);
+    event ManagerRemoved(address indexed owner, address indexed manager);
+    event ValidatorAdded(address indexed manager, address indexed validator);
+    event ValidatorRemoved(address indexed manager, address indexed validator);
+    event RequiredValidatorsChanged(
+        address indexed manager,
+        uint256 indexed old_required_validators,
+        uint256 indexed new_required_validators
+    );
+
+    // Constant for the manager role
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+
+    // The chain id of the settlement contract
+    uint256 public chain_id;
+    string public contract_chain_name;
+
+    // The number of required validators
+    uint256 public required_validators;
+
+    // The signature verifier contract
+    ISettlementSignatureVerifier public signature_verifier;
+
+    // Mapping for nonce manager and validators
+    mapping(address => uint256) public nonce_manager;
+    mapping(address => bool) public chakra_validators;
+    uint256 public validator_count;
+
+    /**
+     * @dev Initialize the settlement
+     * @param _chain_name The chain name
+     * @param _chain_id  The chain id
+     * @param _owner The owner address for the contract
+     * @param _managers The managers addresses
+     * @param _required_validators The required validators number
+     * @param _signature_verifier The Verifier contract address
+     */
+    function _Settlement_init(
+        string memory _chain_name,
+        uint256 _chain_id,
+        address _owner,
+        address[] memory _managers,
+        uint256 _required_validators,
+        address _signature_verifier
+    ) public {
+        __Ownable_init(_owner);
+        __UUPSUpgradeable_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
+
+        for (uint256 i = 0; i < _managers.length; i++) {
+            _grantRole(MANAGER_ROLE, _managers[i]);
+        }
+
+        chain_id = _chain_id;
+        contract_chain_name = _chain_name;
+        required_validators = _required_validators;
+        signature_verifier = ISettlementSignatureVerifier(_signature_verifier);
+    }
+
+    /**
+     * @dev Authorize upgrade contract
+     * @param newImplementation The new implementation contract address
+     */
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal override onlyOwner {}
+
+    /**
+     * @dev Adds a handler to the whitelist
+     * @param validator The validator address
+     */
+    function add_validator(address validator) external onlyRole(MANAGER_ROLE) {
+        signature_verifier.add_validator(validator);
+        require(
+            chakra_validators[validator] == false,
+            "Validator already exists"
+        );
+        chakra_validators[validator] = true;
+        validator_count += 1;
+        emit ValidatorAdded(msg.sender, validator);
+    }
+
+    /**
+     * @dev Removes a handler from the whitelist
+     * @param validator The validator address
+     */
+    function remove_validator(
+        address validator
+    ) external onlyRole(MANAGER_ROLE) {
+        signature_verifier.remove_validator(validator);
+        require(
+            chakra_validators[validator] == true,
+            "Validator does not exists"
+        );
+        chakra_validators[validator] = false;
+        validator_count -= 1;
+        emit ValidatorRemoved(msg.sender, validator);
+    }
+
+    /**
+     * @dev Update the required validators num
+     * @notice Only manager can dot this
+     * @param _required_validators The required validators number
+     */
+    function set_required_validators_num(
+        uint256 _required_validators
+    ) external onlyRole(MANAGER_ROLE) {
+        uint256 old = required_validators;
+        required_validators = _required_validators;
+        emit RequiredValidatorsChanged(msg.sender, old, required_validators);
+    }
+
+    /**
+     * @dev Check if address is a validator
+     * @param _validator The address to detect
+     */
+    function is_validator(address _validator) external view returns (bool) {
+        return chakra_validators[_validator];
+    }
+
+    /**
+     * @dev Get now reuiqred validators number
+     */
+    function view_required_validators_num() external view returns (uint256) {
+        return required_validators;
+    }
+
+    /**
+     * @dev Grant a manager role for address
+     * @notice Only owner can do this
+     * @param _manager The manager address
+     */
+    function add_manager(address _manager) external onlyOwner {
+        grantRole(MANAGER_ROLE, _manager);
+        emit ManagerAdded(msg.sender, _manager);
+    }
+
+    /**
+     * @dev Revoke a manager role for address
+     * @notice Only owner can do this
+     * @param _manager The manager address
+     */
+    function remove_manager(address _manager) external onlyOwner {
+        revokeRole(MANAGER_ROLE, _manager);
+        emit ManagerRemoved(msg.sender, _manager);
+    }
+
+    /**
+     * @dev Check if address is a manager
+     * @param _manager The manager address
+     */
+    function is_manager(address _manager) external view returns (bool) {
+        return hasRole(MANAGER_ROLE, _manager);
+    }
+
+    /**
+     * @dev Get nonce of an account
+     * @param account The account address
+     */
+    function view_nonce(address account) external view returns (uint256) {
+        return nonce_manager[account];
+    }
+
+    /**
+     * @dev Get the contract version
+     */
+    function version() public pure virtual returns (string memory) {
+        return "0.1.0";
+    }
+}
+
+
+Test contract name: Test2024_08_chakra_missing_access_control_in_settlement_ini
+
+Generate the complete .t.sol file. Import the real contract at "solidity/settlement/contracts/BaseSettlement.sol".

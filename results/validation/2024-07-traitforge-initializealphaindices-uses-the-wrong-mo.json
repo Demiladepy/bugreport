@@ -1,0 +1,10 @@
+{
+  "finding_id": "2024-07-traitforge-initializealphaindices-uses-the-wrong-mo",
+  "status": "INCONCLUSIVE",
+  "vulnerable_outcome": null,
+  "fix_outcome": null,
+  "vulnerable_result": null,
+  "fix_result": null,
+  "notes": "Command '['git', 'checkout', '279b2887e3d38bc219a05d332cbcb0655b2dc644']' returned non-zero exit status 1.",
+  "validated_at": "2026-05-22T14:21:58.371769+00:00"
+}

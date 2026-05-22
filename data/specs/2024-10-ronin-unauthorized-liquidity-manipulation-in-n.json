@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-10-ronin-unauthorized-liquidity-manipulation-in-n",
+  "spec_natural_language": "function increaseLiquidity MUST revert when the caller is not the owner or an authorized operator of the specified tokenId",
+  "spec_type": "access_control",
+  "function_signature": "increaseLiquidity((uint256,uint256,uint256,uint256,uint256,uint256))",
+  "violated_invariant": {
+    "precondition": "msg.sender is not the owner of params.tokenId AND msg.sender is not an approved operator for params.tokenId",
+    "should_revert": true,
+    "expected_behavior": "The function should revert with an authorization error when an unauthorized user attempts to increase liquidity for a token position they do not own or are not approved to operate"
+  },
+  "halmos_property_sketch": "function check_increaseLiquidity_unauthorized(uint256 tokenId, uint256 amount0Desired, uint256 amount1Desired, address caller) public {\n    vm.assume(tokenId > 0 && _exists(tokenId));\n    address owner = ownerOf(tokenId);\n    vm.assume(caller != owner);\n    vm.assume(!isApprovedForAll(owner, caller));\n    vm.assume(getApproved(tokenId) != caller);\n    \n    IncreaseLiquidityParams memory params = IncreaseLiquidityParams({\n        tokenId: tokenId,\n        amount0Desired: amount0Desired,\n        amount1Desired: amount1Desired,\n        amount0Min: 0,\n        amount1Min: 0,\n        deadline: block.timestamp + 1000\n    });\n    \n    vm.prank(caller);\n    try nonfungiblePositionManager.increaseLiquidity(params) {\n        assert(false); // Should have reverted\n    } catch {\n        // Expected revert\n    }\n}",
+  "affected_function_lines": [
+    246,
+    294
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly states that the increaseLiquidity function lacks the isAuthorizedForToken modifier, allowing unauthorized users to manipulate liquidity for positions they don't own. The vulnerability, affected function, and fix are all explicitly described with specific code references.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:08:55.384660+00:00"
+}

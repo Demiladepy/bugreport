@@ -1,0 +1,98 @@
+SYSTEM:
+You generate Halmos symbolic execution tests for Foundry that compile against REAL protocol repos.
+
+CANONICAL EXAMPLE (imports real contract from repo — NOT a mock copy):
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
+
+import {Test} from "forge-std/Test.sol";
+import {SymTest} from "halmos-cheatcodes/SymTest.sol";
+import {SetterTopNPoolsStrategy} from "contracts/SetterTopNPoolsStrategy.sol";
+
+/// Dependency stub only — NOT the contract under test.
+contract MockAVM {
+    uint256 public topN;
+    address public executor;
+    constructor(address _executor, uint256 _topN) { executor = _executor; topN = _topN; }
+}
+
+contract Test2025_05_blackhole_H_10 is Test, SymTest {
+    SetterTopNPoolsStrategy strategy;
+    address owner;
+
+    function setUp() public {
+        owner = makeAddr("owner");
+        MockAVM avm = new MockAVM(makeAddr("executor"), 10);
+        vm.prank(owner);
+        strategy = new SetterTopNPoolsStrategy(makeAddr("voter"), address(avm));
+    }
+
+    function check_ownerCanSetTopNPools() public {
+        vm.prank(owner);
+        address[] memory pools = new address[](0);
+        (bool success,) = address(strategy).call(
+            abi.encodeWithSelector(SetterTopNPoolsStrategy.setTopNPools.selector, pools)
+        );
+        assert(success);
+    }
+}
+
+
+CRITICAL RULES:
+- Output ONLY valid Solidity source. No markdown fences.
+- Import SymTest from "halmos-cheatcodes/SymTest.sol" (NOT halmos/SymTest.sol).
+- Import the REAL target contract: `import {ContractName} from "<affected_file_path>";`
+- NEVER define a mock/fake/stub copy of the contract under test (no MockVulnerable*, no reimplementing target functions).
+- Small dependency stubs (e.g. constructor deps like AVM) are OK if the real repo needs them — keep minimal.
+- Inherit Test, SymTest. Exactly ONE `check_*` function.
+- Use `svm.createAddress` for symbolic callers and `vm.assume` for constraints.
+- Assertion direction: property MUST hold on FIXED code (Halmos PASS), fail on VULNERABLE (Halmos FAIL).
+- Match pragma to target contract source when provided.
+- Use repo-relative import paths exactly as given (forward slashes).
+- Deploy/instantiate the real contract in setUp(); do not test against interfaces only unless unavoidable.
+
+
+USER:
+Generate a Halmos test file for this finding.
+
+Finding ID: 2024-08-chakra-an-attacker-can-steal-ownership-of-imple
+Title: An attacker can steal ownership of implementation contracts `SettlementSignatureVerifier.sol` and `ERC20CodecV1.sol`
+Repo URL: https://github.com/code-423n4/2024-08-chakra
+Affected file: solidity/handler/contracts/SettlementSignatureVerifier.sol
+Import path: solidity/handler/contracts/SettlementSignatureVerifier.sol
+Contract name: SettlementSignatureVerifier
+Vulnerable commit: None
+Pragma hint: ^0.8.20
+
+Extracted spec:
+{
+  "finding_id": "2024-08-chakra-an-attacker-can-steal-ownership-of-imple",
+  "spec_natural_language": "function initialize MUST NOT succeed when called directly on the implementation contract (i.e., when implementation contract is already deployed but not accessed through proxy)",
+  "spec_type": "init_pattern",
+  "function_signature": "initialize(address,uint256)",
+  "violated_invariant": {
+    "precondition": "The implementation contract constructor has been executed (contract is deployed)",
+    "should_revert": true,
+    "expected_behavior": "Calling initialize on the implementation contract directly should revert because _disableInitializers() should have been called in the constructor"
+  },
+  "halmos_property_sketch": "function check_implementationCannotBeInitialized(address attacker, uint256 requiredValidators) public {\n    // Deploy implementation directly (not via proxy)\n    SettlementSignatureVerifier impl = new SettlementSignatureVerifier();\n    \n    // Attacker attempts to call initialize directly on implementation\n    vm.prank(attacker);\n    try impl.initialize(attacker, requiredValidators) {\n        // If initialize succeeds, the bug exists\n        assert(false); // SHOULD FAIL on buggy code\n    } catch {\n        // Initialize should revert - this is correct behavior\n        assert(true);\n    }\n}",
+  "affected_function_lines": [
+    10,
+    13
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly describes that the initialize() function on the implementation contract can be called by anyone because there is no constructor calling _disableInitializers(). The invariant is straightforward: implementation contracts using UUPS pattern must disable initialization in constructor to prevent direct initialization attacks.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:07:28.576066+00:00"
+}
+
+Target function: initialize(address,uint256)
+Precondition: The implementation contract constructor has been executed (contract is deployed)
+should_revert: True
+
+REAL CONTRACT SOURCE (from repo at vulnerable commit):
+(source unavailable — import from affected file path)
+
+Test contract name: Test2024_08_chakra_an_attacker_can_steal_ownership_of_imple
+
+Generate the complete .t.sol file. Import the real contract at "solidity/handler/contracts/SettlementSignatureVerifier.sol".

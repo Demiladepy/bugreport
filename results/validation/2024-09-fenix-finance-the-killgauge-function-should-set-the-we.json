@@ -1,0 +1,10 @@
+{
+  "finding_id": "2024-09-fenix-finance-the-killgauge-function-should-set-the-we",
+  "status": "INCONCLUSIVE",
+  "vulnerable_outcome": null,
+  "fix_outcome": null,
+  "vulnerable_result": null,
+  "fix_result": null,
+  "notes": "vulnerable_commit is null",
+  "validated_at": "2026-05-22T14:21:58.451385+00:00"
+}

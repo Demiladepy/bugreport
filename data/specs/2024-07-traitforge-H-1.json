@@ -1,0 +1,17 @@
+{
+  "finding_id": "2024-07-traitforge-H-1",
+  "spec_natural_language": "EntropyGenerator contract MUST provide externally callable pause() and unpause() functions accessible to the owner to enable emergency pause functionality",
+  "spec_type": "access_control",
+  "function_signature": "pause()",
+  "violated_invariant": {
+    "precondition": "owner calls pause() when contract is not paused",
+    "should_revert": false,
+    "expected_behavior": "Contract state should transition to paused, and functions with whenNotPaused modifier should become inaccessible"
+  },
+  "halmos_property_sketch": "function check_pause_function_exists(address caller) public {\n    vm.assume(caller == owner);\n    vm.prank(caller);\n    // This call should succeed if pause() is properly implemented\n    try entropyGenerator.pause() {\n        assert(entropyGenerator.paused() == true);\n    } catch {\n        // If pause() doesn't exist or reverts for owner, this is a bug\n        assert(false);\n    }\n}",
+  "affected_function_lines": null,
+  "extraction_confidence": "medium",
+  "extraction_reasoning": "The finding describes missing public pause/unpause functions rather than a bug in an existing function. The invariant is clear (owner must be able to pause), but the issue is about missing functionality rather than incorrect behavior of an existing function. Confidence is medium because the property test would need to verify function existence which is somewhat outside typical formal verification patterns.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:08:11.535030+00:00"
+}

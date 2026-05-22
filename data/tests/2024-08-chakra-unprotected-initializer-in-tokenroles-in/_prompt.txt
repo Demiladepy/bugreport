@@ -1,0 +1,142 @@
+SYSTEM:
+You generate Halmos symbolic execution tests for Foundry that compile against REAL protocol repos.
+
+CANONICAL EXAMPLE (imports real contract from repo — NOT a mock copy):
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
+
+import {Test} from "forge-std/Test.sol";
+import {SymTest} from "halmos-cheatcodes/SymTest.sol";
+import {SetterTopNPoolsStrategy} from "contracts/SetterTopNPoolsStrategy.sol";
+
+/// Dependency stub only — NOT the contract under test.
+contract MockAVM {
+    uint256 public topN;
+    address public executor;
+    constructor(address _executor, uint256 _topN) { executor = _executor; topN = _topN; }
+}
+
+contract Test2025_05_blackhole_H_10 is Test, SymTest {
+    SetterTopNPoolsStrategy strategy;
+    address owner;
+
+    function setUp() public {
+        owner = makeAddr("owner");
+        MockAVM avm = new MockAVM(makeAddr("executor"), 10);
+        vm.prank(owner);
+        strategy = new SetterTopNPoolsStrategy(makeAddr("voter"), address(avm));
+    }
+
+    function check_ownerCanSetTopNPools() public {
+        vm.prank(owner);
+        address[] memory pools = new address[](0);
+        (bool success,) = address(strategy).call(
+            abi.encodeWithSelector(SetterTopNPoolsStrategy.setTopNPools.selector, pools)
+        );
+        assert(success);
+    }
+}
+
+
+CRITICAL RULES:
+- Output ONLY valid Solidity source. No markdown fences.
+- Import SymTest from "halmos-cheatcodes/SymTest.sol" (NOT halmos/SymTest.sol).
+- Import the REAL target contract: `import {ContractName} from "<affected_file_path>";`
+- NEVER define a mock/fake/stub copy of the contract under test (no MockVulnerable*, no reimplementing target functions).
+- Small dependency stubs (e.g. constructor deps like AVM) are OK if the real repo needs them — keep minimal.
+- Inherit Test, SymTest. Exactly ONE `check_*` function.
+- Use `svm.createAddress` for symbolic callers and `vm.assume` for constraints.
+- Assertion direction: property MUST hold on FIXED code (Halmos PASS), fail on VULNERABLE (Halmos FAIL).
+- Match pragma to target contract source when provided.
+- Use repo-relative import paths exactly as given (forward slashes).
+- Deploy/instantiate the real contract in setUp(); do not test against interfaces only unless unavoidable.
+
+
+USER:
+Generate a Halmos test file for this finding.
+
+Finding ID: 2024-08-chakra-unprotected-initializer-in-tokenroles-in
+Title: Unprotected initializer in '__TokenRoles_init' function let any user call it and reinitialize the contract
+Repo URL: https://github.com/code-423n4/2024-08-chakra
+Affected file: solidity/handler/contracts/TokenRoles.sol
+Import path: solidity/handler/contracts/TokenRoles.sol
+Contract name: TokenRoles
+Vulnerable commit: d0d45ae1d26ca1b87034e67180fac07ce9642fd9
+Pragma hint: ^0.8.24
+
+Extracted spec:
+{
+  "finding_id": "2024-08-chakra-unprotected-initializer-in-tokenroles-in",
+  "spec_natural_language": "function __TokenRoles_init MUST revert when the contract has already been initialized",
+  "spec_type": "init_pattern",
+  "function_signature": "__TokenRoles_init(address,address)",
+  "violated_invariant": {
+    "precondition": "contract has already been initialized (initializer called once before)",
+    "should_revert": true,
+    "expected_behavior": "subsequent calls to __TokenRoles_init should revert to prevent re-initialization"
+  },
+  "halmos_property_sketch": "function check_reinitializationReverts(address owner1, address op1, address owner2, address op2) public {\n    // First initialization\n    tokenRoles.__TokenRoles_init(owner1, op1);\n    \n    // Second initialization should revert\n    try tokenRoles.__TokenRoles_init(owner2, op2) {\n        assert(false); // Should not reach here\n    } catch {\n        // Expected to revert\n    }\n}",
+  "affected_function_lines": [
+    19,
+    23
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly describes that __TokenRoles_init lacks the initializer modifier, allowing anyone to call it multiple times. The invariant is explicit: initialization functions should only execute once. The affected lines are explicitly referenced in the report.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:07:19.446669+00:00"
+}
+
+Target function: __TokenRoles_init(address,address)
+Precondition: contract has already been initialized (initializer called once before)
+should_revert: True
+
+REAL CONTRACT SOURCE (from repo at vulnerable commit):
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
+abstract contract TokenRoles is
+    OwnableUpgradeable,
+    UUPSUpgradeable,
+    AccessControlUpgradeable
+{
+    event OperatorAdded(address indexed owner, address indexed operator);
+
+    event OperatorRemoved(address indexed owner, address indexed operator);
+
+    bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
+
+    function __TokenRoles_init(address _owner, address _operator) public {
+        __Ownable_init(_owner);
+        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
+        _grantRole(OPERATOR_ROLE, _operator);
+    }
+
+    function transferOwnership(address newOwner) public override onlyOwner {
+        _revokeRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, newOwner);
+        _transferOwnership(newOwner);
+    }
+
+    function add_operator(address newOperator) external onlyOwner {
+        _grantRole(OPERATOR_ROLE, newOperator);
+        emit OperatorAdded(msg.sender, newOperator);
+    }
+
+    function remove_operator(address operator) external onlyOwner {
+        _revokeRole(OPERATOR_ROLE, operator);
+        emit OperatorRemoved(msg.sender, operator);
+    }
+
+    function is_operator(address account) public view returns (bool) {
+        return hasRole(OPERATOR_ROLE, account);
+    }
+}
+
+
+Test contract name: Test2024_08_chakra_unprotected_initializer_in_tokenroles_in
+
+Generate the complete .t.sol file. Import the real contract at "solidity/handler/contracts/TokenRoles.sol".

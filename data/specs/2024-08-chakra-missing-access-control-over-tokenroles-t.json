@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-08-chakra-missing-access-control-over-tokenroles-t",
+  "spec_natural_language": "function __TokenRoles_init MUST revert when called after the contract has already been initialized",
+  "spec_type": "access_control",
+  "function_signature": "__TokenRoles_init(address,address)",
+  "violated_invariant": {
+    "precondition": "contract has already been initialized (initialization function was previously called)",
+    "should_revert": true,
+    "expected_behavior": "The function should only execute successfully once during initial deployment; subsequent calls must revert to prevent re-initialization of owner and operator roles"
+  },
+  "halmos_property_sketch": "function check_tokenRolesInit_cannotReinitialize(address owner1, address operator1, address owner2, address operator2) public {\n    // First initialization succeeds\n    tokenRoles.__TokenRoles_init(owner1, operator1);\n    \n    // Store the owner after first init\n    address ownerAfterFirstInit = tokenRoles.owner();\n    \n    // Attempt second initialization - should revert\n    try tokenRoles.__TokenRoles_init(owner2, operator2) {\n        // If we reach here, re-initialization succeeded (BUG)\n        assert(false);\n    } catch {\n        // Expected behavior - should revert\n        assert(tokenRoles.owner() == ownerAfterFirstInit);\n    }\n}",
+  "affected_function_lines": [
+    19,
+    19
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly identifies that __TokenRoles_init lacks the initializer modifier and can be called multiple times by anyone. The invariant is straightforward: initialization functions in upgradeable contracts must only be callable once. The line reference and function name are explicitly stated.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:08:47.098099+00:00"
+}

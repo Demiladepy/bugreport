@@ -1,0 +1,10 @@
+{
+  "total_findings": 20,
+  "validated": 1,
+  "spec_too_weak": 0,
+  "spec_too_strict": 0,
+  "inconclusive": 16,
+  "cannot_validate_missing_fix": 3,
+  "validation_rate": 1.0,
+  "generated_at": "2026-05-22T14:21:58.562881+00:00"
+}

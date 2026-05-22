@@ -1,0 +1,278 @@
+SYSTEM:
+You generate Halmos symbolic execution tests for Foundry that compile against REAL protocol repos.
+
+CANONICAL EXAMPLE (imports real contract from repo — NOT a mock copy):
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
+
+import {Test} from "forge-std/Test.sol";
+import {SymTest} from "halmos-cheatcodes/SymTest.sol";
+import {SetterTopNPoolsStrategy} from "contracts/SetterTopNPoolsStrategy.sol";
+
+/// Dependency stub only — NOT the contract under test.
+contract MockAVM {
+    uint256 public topN;
+    address public executor;
+    constructor(address _executor, uint256 _topN) { executor = _executor; topN = _topN; }
+}
+
+contract Test2025_05_blackhole_H_10 is Test, SymTest {
+    SetterTopNPoolsStrategy strategy;
+    address owner;
+
+    function setUp() public {
+        owner = makeAddr("owner");
+        MockAVM avm = new MockAVM(makeAddr("executor"), 10);
+        vm.prank(owner);
+        strategy = new SetterTopNPoolsStrategy(makeAddr("voter"), address(avm));
+    }
+
+    function check_ownerCanSetTopNPools() public {
+        vm.prank(owner);
+        address[] memory pools = new address[](0);
+        (bool success,) = address(strategy).call(
+            abi.encodeWithSelector(SetterTopNPoolsStrategy.setTopNPools.selector, pools)
+        );
+        assert(success);
+    }
+}
+
+
+CRITICAL RULES:
+- Output ONLY valid Solidity source. No markdown fences.
+- Import SymTest from "halmos-cheatcodes/SymTest.sol" (NOT halmos/SymTest.sol).
+- Import the REAL target contract: `import {ContractName} from "<affected_file_path>";`
+- NEVER define a mock/fake/stub copy of the contract under test (no MockVulnerable*, no reimplementing target functions).
+- Small dependency stubs (e.g. constructor deps like AVM) are OK if the real repo needs them — keep minimal.
+- Inherit Test, SymTest. Exactly ONE `check_*` function.
+- Use `svm.createAddress` for symbolic callers and `vm.assume` for constraints.
+- Assertion direction: property MUST hold on FIXED code (Halmos PASS), fail on VULNERABLE (Halmos FAIL).
+- Match pragma to target contract source when provided.
+- Use repo-relative import paths exactly as given (forward slashes).
+- Deploy/instantiate the real contract in setUp(); do not test against interfaces only unless unavoidable.
+
+
+USER:
+Generate a Halmos test file for this finding.
+
+Finding ID: 2023-11-kelp-lack-of-deletion-mechanism-for-assets-po
+Title: Lack of deletion mechanism for assets poses security risk in the protocol
+Repo URL: https://github.com/code-423n4/2023-11-kelp
+Affected file: src/LRTConfig.sol
+Import path: src/LRTConfig.sol
+Contract name: LRTConfig
+Vulnerable commit: 7aab85f81786d17e379b44a28523a2bac9d7eb2f
+Pragma hint: 0.8.21
+
+Extracted spec:
+{
+  "finding_id": "2023-11-kelp-lack-of-deletion-mechanism-for-assets-po",
+  "spec_natural_language": "function removeSupportedAsset(address) MUST exist and be callable by MANAGER role to remove a previously added asset from the supportedAssets list",
+  "spec_type": "access_control",
+  "function_signature": "addNewSupportedAsset(address,uint256)",
+  "violated_invariant": {
+    "precondition": "an asset has been added via addNewSupportedAsset and needs to be removed due to security concerns",
+    "should_revert": false,
+    "expected_behavior": "there should be a corresponding removeSupportedAsset function that allows authorized roles to remove assets, but no such function exists"
+  },
+  "halmos_property_sketch": "function check_assetRemovalMechanismExists(address asset, uint256 depositLimit) public {\n    // Setup: add an asset as manager\n    vm.prank(manager);\n    lrtConfig.addNewSupportedAsset(asset, depositLimit);\n    assert(lrtConfig.isSupportedAsset(asset));\n    \n    // Property: there should be a way to remove the asset\n    // This test documents the missing functionality\n    // A removeSupportedAsset function should exist and work\n    // vm.prank(manager);\n    // lrtConfig.removeSupportedAsset(asset);\n    // assert(!lrtConfig.isSupportedAsset(asset));\n    \n    // Currently: asset cannot be removed, this is the bug\n    // The test would FAIL because no removal function exists\n}",
+  "affected_function_lines": [
+    73,
+    75
+  ],
+  "extraction_confidence": "low",
+  "extraction_reasoning": "This finding describes missing functionality (lack of a removal function) rather than a bug in existing code. It's more of a design recommendation than a concrete invariant violation. There is no specific function whose behavior is incorrect - rather, a function that should exist does not exist. This makes it difficult to express as a formal property test since we cannot test the behavior of a non-existent function.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:08:38.925736+00:00"
+}
+
+Target function: addNewSupportedAsset(address,uint256)
+Precondition: an asset has been added via addNewSupportedAsset and needs to be removed due to security concerns
+should_revert: False
+
+REAL CONTRACT SOURCE (from repo at vulnerable commit):
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity 0.8.21;
+
+import { UtilLib } from "./utils/UtilLib.sol";
+import { LRTConstants } from "./utils/LRTConstants.sol";
+import { ILRTConfig } from "./interfaces/ILRTConfig.sol";
+
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+
+/// @title LRTConfig - LRT Config Contract
+/// @notice Handles LRT configuration
+contract LRTConfig is ILRTConfig, AccessControlUpgradeable {
+    mapping(bytes32 tokenKey => address tokenAddress) public tokenMap;
+    mapping(bytes32 contractKey => address contractAddress) public contractMap;
+    mapping(address token => bool isSupported) public isSupportedAsset;
+    mapping(address token => uint256 amount) public depositLimitByAsset;
+    mapping(address token => address strategy) public override assetStrategy;
+
+    address[] public supportedAssetList;
+
+    address public rsETH;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    modifier onlySupportedAsset(address asset) {
+        if (!isSupportedAsset[asset]) {
+            revert AssetNotSupported();
+        }
+        _;
+    }
+
+    /// @dev Initializes the contract
+    /// @param admin Admin address
+    /// @param stETH stETH address
+    /// @param rETH rETH address
+    /// @param cbETH cbETH address
+    /// @param rsETH_ cbETH address
+    function initialize(
+        address admin,
+        address stETH,
+        address rETH,
+        address cbETH,
+        address rsETH_
+    )
+        external
+        initializer
+    {
+        UtilLib.checkNonZeroAddress(admin);
+        UtilLib.checkNonZeroAddress(stETH);
+        UtilLib.checkNonZeroAddress(rETH);
+        UtilLib.checkNonZeroAddress(cbETH);
+        UtilLib.checkNonZeroAddress(rsETH_);
+
+        __AccessControl_init();
+        _setToken(LRTConstants.ST_ETH_TOKEN, stETH);
+        _setToken(LRTConstants.R_ETH_TOKEN, rETH);
+        _setToken(LRTConstants.CB_ETH_TOKEN, cbETH);
+        _addNewSupportedAsset(stETH, 100_000 ether);
+        _addNewSupportedAsset(rETH, 100_000 ether);
+        _addNewSupportedAsset(cbETH, 100_000 ether);
+
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+
+        rsETH = rsETH_;
+    }
+
+    /// @dev Adds a new supported asset
+    /// @param asset Asset address
+    /// @param depositLimit Deposit limit for the asset
+    function addNewSupportedAsset(address asset, uint256 depositLimit) external onlyRole(LRTConstants.MANAGER) {
+        _addNewSupportedAsset(asset, depositLimit);
+    }
+
+    /// @dev private function to add a new supported asset
+    /// @param asset Asset address
+    /// @param depositLimit Deposit limit for the asset
+    function _addNewSupportedAsset(address asset, uint256 depositLimit) private {
+        UtilLib.checkNonZeroAddress(asset);
+        if (isSupportedAsset[asset]) {
+            revert AssetAlreadySupported();
+        }
+        isSupportedAsset[asset] = true;
+        supportedAssetList.push(asset);
+        depositLimitByAsset[asset] = depositLimit;
+        emit AddedNewSupportedAsset(asset, depositLimit);
+    }
+
+    /// @dev Updates the deposit limit for an asset
+    /// @param asset Asset address
+    /// @param depositLimit New deposit limit
+    function updateAssetDepositLimit(
+        address asset,
+        uint256 depositLimit
+    )
+        external
+        onlyRole(LRTConstants.MANAGER)
+        onlySupportedAsset(asset)
+    {
+        depositLimitByAsset[asset] = depositLimit;
+        emit AssetDepositLimitUpdate(asset, depositLimit);
+    }
+
+    /// @dev Updates the strategy for an asset
+    /// @param asset Asset address
+    /// @param strategy New strategy address
+    function updateAssetStrategy(
+        address asset,
+        address strategy
+    )
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlySupportedAsset(asset)
+    {
+        UtilLib.checkNonZeroAddress(strategy);
+        if (assetStrategy[asset] == strategy) {
+            revert ValueAlreadyInUse();
+        }
+        assetStrategy[asset] = strategy;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            GETTERS
+    //////////////////////////////////////////////////////////////*/
+    function getLSTToken(bytes32 tokenKey) external view override returns (address) {
+        return tokenMap[tokenKey];
+    }
+
+    function getContract(bytes32 contractKey) external view override returns (address) {
+        return contractMap[contractKey];
+    }
+
+    function getSupportedAssetList() external view override returns (address[] memory) {
+        return supportedAssetList;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            SETTERS
+    //////////////////////////////////////////////////////////////*/
+    /// @dev Sets the rsETH contract address. Only callable by the admin
+    /// @param rsETH_ rsETH contract address
+    function setRSETH(address rsETH_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(rsETH_);
+        rsETH = rsETH_;
+    }
+
+    function setToken(bytes32 tokenKey, address assetAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setToken(tokenKey, assetAddress);
+    }
+
+    /// @dev private function to set a token
+    /// @param key Token key
+    /// @param val Token address
+    function _setToken(bytes32 key, address val) private {
+        UtilLib.checkNonZeroAddress(val);
+        if (tokenMap[key] == val) {
+            revert ValueAlreadyInUse();
+        }
+        tokenMap[key] = val;
+        emit SetToken(key, val);
+    }
+
+    function setContract(bytes32 contractKey, address contractAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setContract(contractKey, contractAddress);
+    }
+
+    /// @dev private function to set a contract
+    /// @param key Contract key
+    /// @param val Contract address
+    function _setContract(bytes32 key, address val) private {
+        UtilLib.checkNonZeroAddress(val);
+        if (contractMap[key] == val) {
+            revert ValueAlreadyInUse();
+        }
+        contractMap[key] = val;
+        emit SetContract(key, val);
+    }
+}
+
+
+Test contract name: Test2023_11_kelp_lack_of_deletion_mechanism_for_assets_po
+
+Generate the complete .t.sol file. Import the real contract at "src/LRTConfig.sol".

@@ -1,0 +1,17 @@
+{
+  "finding_id": "2024-08-chakra-default-admin-role-not-revoked-on-owners",
+  "spec_natural_language": "function transferOwnership(address) MUST revoke DEFAULT_ADMIN_ROLE from the old owner when ownership is transferred",
+  "spec_type": "access_control",
+  "function_signature": "transferOwnership(address)",
+  "violated_invariant": {
+    "precondition": "msg.sender is current owner and newOwner is a valid non-zero address",
+    "should_revert": false,
+    "expected_behavior": "After ownership transfer completes, the old owner should no longer have DEFAULT_ADMIN_ROLE and thus should not be able to call grantRole() or revokeRole()"
+  },
+  "halmos_property_sketch": "function check_transferOwnership_revokes_admin_role(address oldOwner, address newOwner) public {\n    vm.assume(oldOwner != address(0) && newOwner != address(0) && oldOwner != newOwner);\n    // Setup: oldOwner is current owner and has DEFAULT_ADMIN_ROLE\n    vm.prank(oldOwner);\n    contract.transferOwnership(newOwner);\n    // After transfer, oldOwner should not have DEFAULT_ADMIN_ROLE\n    assert(!contract.hasRole(contract.DEFAULT_ADMIN_ROLE(), oldOwner));\n    // newOwner should have DEFAULT_ADMIN_ROLE\n    assert(contract.hasRole(contract.DEFAULT_ADMIN_ROLE(), newOwner));\n}",
+  "affected_function_lines": null,
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly describes that transferOwnership() fails to revoke DEFAULT_ADMIN_ROLE from the old owner. The invariant is unambiguous: after ownership transfer, the old owner should lose DEFAULT_ADMIN_ROLE privileges. The affected function is the inherited transferOwnership() which needs to be overridden to handle role revocation.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:07:37.217921+00:00"
+}

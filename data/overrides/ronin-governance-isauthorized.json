@@ -1,0 +1,8 @@
+{
+  "repo_url": "https://github.com/ronin-chain/katana-operation-contracts",
+  "vulnerable_commit": "27f9d28e00958bf3494fa405a8a5acdcd5ecdc5d",
+  "fix_commit": "27f9d28e00958bf3494fa405a8a5acdcd5ecdc5d",
+  "synthetic_fix": true,
+  "affected_file": "src/governance/KatanaGovernance.sol",
+  "bug_spec": "When whitelist expiry has passed, _isAuthorized must not grant access to arbitrary accounts."
+}

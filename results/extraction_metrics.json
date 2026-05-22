@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-05-22T14:09:11.843054+00:00",
+  "total_findings": 20,
+  "extraction_successful": 20,
+  "extraction_failed": 0,
+  "by_confidence": {
+    "high": 18,
+    "medium": 1,
+    "low": 1
+  },
+  "by_category": {
+    "access-control": 20
+  },
+  "avg_response_time_ms": 8373.1
+}

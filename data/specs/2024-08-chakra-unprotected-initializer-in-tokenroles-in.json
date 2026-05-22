@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-08-chakra-unprotected-initializer-in-tokenroles-in",
+  "spec_natural_language": "function __TokenRoles_init MUST revert when the contract has already been initialized",
+  "spec_type": "init_pattern",
+  "function_signature": "__TokenRoles_init(address,address)",
+  "violated_invariant": {
+    "precondition": "contract has already been initialized (initializer called once before)",
+    "should_revert": true,
+    "expected_behavior": "subsequent calls to __TokenRoles_init should revert to prevent re-initialization"
+  },
+  "halmos_property_sketch": "function check_reinitializationReverts(address owner1, address op1, address owner2, address op2) public {\n    // First initialization\n    tokenRoles.__TokenRoles_init(owner1, op1);\n    \n    // Second initialization should revert\n    try tokenRoles.__TokenRoles_init(owner2, op2) {\n        assert(false); // Should not reach here\n    } catch {\n        // Expected to revert\n    }\n}",
+  "affected_function_lines": [
+    19,
+    23
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly describes that __TokenRoles_init lacks the initializer modifier, allowing anyone to call it multiple times. The invariant is explicit: initialization functions should only execute once. The affected lines are explicitly referenced in the report.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:07:19.446669+00:00"
+}

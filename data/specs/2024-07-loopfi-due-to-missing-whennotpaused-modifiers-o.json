@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-07-loopfi-due-to-missing-whennotpaused-modifiers-o",
+  "spec_natural_language": "function borrow MUST revert when the contract is paused",
+  "spec_type": "access_control",
+  "function_signature": "borrow(address,address,uint256)",
+  "violated_invariant": {
+    "precondition": "contract is paused (paused() == true)",
+    "should_revert": true,
+    "expected_behavior": "borrow should revert when called on a paused contract"
+  },
+  "halmos_property_sketch": "function check_borrow_reverts_when_paused(address borrower, address position, uint256 amount) public {\n    // Setup: pause the contract\n    vm.prank(pauser);\n    cdpVault.pause();\n    \n    // Precondition: contract is paused\n    require(cdpVault.paused());\n    \n    // Action: attempt to borrow\n    vm.prank(borrower);\n    try cdpVault.borrow(borrower, position, amount) {\n        // If borrow succeeds, the invariant is violated\n        assert(false);\n    } catch {\n        // Expected: should revert when paused\n        assert(true);\n    }\n}",
+  "affected_function_lines": [
+    256,
+    268
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding explicitly identifies the missing whenNotPaused modifier on the borrow function at line 256. The invariant is clearly stated: borrow should not be callable when the contract is paused, matching the behavior of deposit and withdraw functions which have whenNotPaused modifiers. The recommended fix is also explicit.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:07:53.893557+00:00"
+}

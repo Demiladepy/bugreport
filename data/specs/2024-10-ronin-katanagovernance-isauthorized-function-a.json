@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-10-ronin-katanagovernance-isauthorized-function-a",
+  "spec_natural_language": "function _isAuthorized MUST return false when block.timestamp is greater than or equal to expiry time (unless expiry equals AUTHORIZED constant)",
+  "spec_type": "access_control",
+  "function_signature": "_isAuthorized(Permission storage,address)",
+  "violated_invariant": {
+    "precondition": "expiry != UNAUTHORIZED && expiry != AUTHORIZED && block.timestamp >= expiry",
+    "should_revert": false,
+    "expected_behavior": "Must return false and fall through to check $.allowed[account], not return true"
+  },
+  "halmos_property_sketch": "function check_isAuthorized_expiry(address account, uint256 expiry, uint256 blockTime) public {\n    vm.assume(expiry != UNAUTHORIZED);\n    vm.assume(expiry != AUTHORIZED);\n    vm.assume(blockTime >= expiry);\n    vm.warp(blockTime);\n    \n    // Setup permission with expiry\n    Permission storage perm = _setupPermission(expiry);\n    perm.allowed[account] = false;\n    \n    bool result = _isAuthorized(perm, account);\n    \n    // After expiry, if account is not in allowed list, should return false\n    assert(!result);\n}",
+  "affected_function_lines": [
+    375,
+    381
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly identifies the exact line and logic flaw: the condition uses '>' instead of '<' for timestamp comparison against expiry, causing authorization to persist after expiry. The fix is explicitly shown in the recommended mitigation.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:07:02.078135+00:00"
+}

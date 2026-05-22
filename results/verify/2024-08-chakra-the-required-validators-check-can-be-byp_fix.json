@@ -1,0 +1,10 @@
+{
+  "finding_id": "2024-08-chakra-the-required-validators-check-can-be-byp",
+  "commit_kind": "fix",
+  "commit_sha": "f61c899c22492bdf5bdcb07cdb62ea9b4cd38825",
+  "halmos_outcome": "ERROR",
+  "counterexamples": null,
+  "halmos_stdout": "Nothing to compile\nERROR    Build output parsing failed: FileNotFoundError: The build output       \n         directory                                                              \n         `C:\\Users\\User\\Desktop\\nothing\\bugreport\\data\\repos\\2024-08-chakra-the-\n         required-validators-check-can-be-byp\\fix\\out` does not exist           \n\n\nNothing to compile\nERROR    Build output parsing failed: FileNotFoundError: The build output       \n         directory                                                              \n         `C:\\Users\\User\\Desktop\\nothing\\bugreport\\data\\repos\\2024-08-chakra-the-\n         required-validators-check-can-be-byp\\fix\\out` does not exist           \n\n\n",
+  "duration_seconds": 7.71,
+  "ran_at": "2026-05-22T14:20:10.270949+00:00"
+}

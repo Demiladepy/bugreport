@@ -1,0 +1,10 @@
+{
+  "finding_id": "2024-08-chakra-missing-access-control-over-tokenroles-t",
+  "commit_kind": "vulnerable",
+  "commit_sha": "d0d45ae1d26ca1b87034e67180fac07ce9642fd9",
+  "halmos_outcome": "ERROR",
+  "counterexamples": null,
+  "halmos_stdout": "Nothing to compile\nERROR    Build output parsing failed: FileNotFoundError: The build output       \n         directory                                                              \n         `C:\\Users\\User\\Desktop\\nothing\\bugreport\\data\\repos\\2024-08-chakra-miss\n         ing-access-control-over-tokenroles-t\\vulnerable\\out` does not exist    \n\n\n",
+  "duration_seconds": 7.44,
+  "ran_at": "2026-05-22T14:17:29.537286+00:00"
+}

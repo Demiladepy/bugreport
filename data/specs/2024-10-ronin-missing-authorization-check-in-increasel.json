@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-10-ronin-missing-authorization-check-in-increasel",
+  "spec_natural_language": "function increaseLiquidity MUST revert when caller is not the owner or approved operator of the specified tokenId",
+  "spec_type": "access_control",
+  "function_signature": "increaseLiquidity((uint256,uint256,uint256,uint256,uint256,uint256))",
+  "violated_invariant": {
+    "precondition": "caller is not the owner of params.tokenId AND caller is not approved for params.tokenId",
+    "should_revert": true,
+    "expected_behavior": "Only the token owner or an approved address should be able to increase liquidity for a given position"
+  },
+  "halmos_property_sketch": "function check_increaseLiquidity_unauthorized(address caller, uint256 tokenId, uint256 amount0, uint256 amount1) public {\n    vm.assume(caller != address(0));\n    vm.assume(nfpm.ownerOf(tokenId) != caller);\n    vm.assume(nfpm.getApproved(tokenId) != caller);\n    vm.assume(!nfpm.isApprovedForAll(nfpm.ownerOf(tokenId), caller));\n    \n    INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager.IncreaseLiquidityParams({\n        tokenId: tokenId,\n        amount0Desired: amount0,\n        amount1Desired: amount1,\n        amount0Min: 0,\n        amount1Min: 0,\n        deadline: block.timestamp + 1\n    });\n    \n    vm.prank(caller);\n    try nfpm.increaseLiquidity(params) {\n        assert(false); // Should have reverted\n    } catch {\n        // Expected revert\n    }\n}",
+  "affected_function_lines": [
+    246,
+    252
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding explicitly states that increaseLiquidity lacks authorization check and any user can increase liquidity of any position regardless of ownership. The fix is clearly specified: add isAuthorizedForToken modifier. The invariant is unambiguous - only token owner or approved address should be able to call this function for a given tokenId.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:06:54.089188+00:00"
+}

@@ -1,0 +1,10 @@
+{
+  "finding_id": "2024-03-neobase-H-01",
+  "status": "CANNOT_VALIDATE",
+  "vulnerable_outcome": null,
+  "fix_outcome": null,
+  "vulnerable_result": null,
+  "fix_result": null,
+  "notes": "fix_commit is null — cannot run self-validation",
+  "validated_at": "2026-05-21T00:03:13.964834+00:00"
+}

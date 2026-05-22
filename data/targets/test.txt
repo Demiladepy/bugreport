@@ -1,0 +1,2 @@
+https://github.com/transmissions11/solmate.git:main
+https://github.com/Vectorized/solady.git:main

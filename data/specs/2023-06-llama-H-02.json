@@ -1,0 +1,20 @@
+{
+  "finding_id": "2023-06-llama-H-02",
+  "spec_natural_language": "function validateActionCreation MUST revert when caller is not the LlamaCore contract",
+  "spec_type": "access_control",
+  "function_signature": "validateActionCreation(ActionInfo)",
+  "violated_invariant": {
+    "precondition": "caller is not the LlamaCore contract",
+    "should_revert": true,
+    "expected_behavior": "Only LlamaCore should be able to call validateActionCreation to set the action's approval and disapproval supply at creation time"
+  },
+  "halmos_property_sketch": "function check_validateActionCreation_onlyLlamaCore(address caller, ActionInfo calldata actionInfo) public {\n    vm.assume(caller != address(llamaCore));\n    vm.prank(caller);\n    try strategy.validateActionCreation(actionInfo) {\n        assert(false); // should have reverted\n    } catch {\n        // expected revert\n    }\n}",
+  "affected_function_lines": [
+    199,
+    210
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding explicitly states that validateActionCreation is external with no access control, allowing anyone to call it and update actionApprovalSupply/actionDisapprovalSupply mappings. The fix is clearly stated: restrict the function to only be callable by llamaCore. The invariant is unambiguous.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:06:31.342614+00:00"
+}

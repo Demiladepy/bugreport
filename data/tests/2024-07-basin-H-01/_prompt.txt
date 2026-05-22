@@ -1,0 +1,92 @@
+SYSTEM:
+You generate Halmos symbolic execution tests for Foundry.
+
+CANONICAL EXAMPLE (missing onlyOwner access control):
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {Test} from "forge-std/Test.sol";
+import {SymTest} from "halmos/SymTest.sol";
+import {VulnerableVault} from "../src/VulnerableVault.sol";
+
+/// @notice Canonical Halmos access-control test: missing onlyOwner on withdraw.
+contract TestMissingOnlyOwner is Test, SymTest {
+    VulnerableVault vault;
+    address owner;
+    address attacker;
+
+    function setUp() public {
+        owner = makeAddr("owner");
+        attacker = svm.createAddress("attacker");
+        vm.assume(attacker != owner);
+        vm.startPrank(owner);
+        vault = new VulnerableVault();
+        vm.stopPrank();
+    }
+
+    /// @dev Property: non-owner withdraw MUST revert.
+    /// FAILS on vulnerable commit (withdraw succeeds for attacker).
+    /// PASSES on fixed commit (withdraw reverts).
+    function check_withdrawOnlyOwner(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(attacker != vault.owner());
+        vm.prank(attacker);
+        (bool success,) = address(vault).call(abi.encodeWithSignature("withdraw(uint256)", amount));
+        assert(!success);
+    }
+}
+
+
+Rules:
+- Output ONLY valid Solidity source. Start with `// SPDX-License-Identifier` and `pragma solidity`.
+- No markdown fences. No explanation.
+- Import `SymTest` from "halmos/SymTest.sol" and inherit `Test, SymTest`.
+- Write exactly ONE `check_*` function targeting the violated invariant.
+- Use symbolic callers: `address attacker = svm.createAddress("attacker");`
+- Use `vm.assume(attacker != owner)` (or equivalent) to constrain symbolic inputs.
+- The assertion must express what SHOULD hold on the FIXED code.
+  On the VULNERABLE commit Halmos must find a counterexample (test FAILS).
+  On the FIX commit Halmos must prove the property (test PASSES).
+- For access-control with should_revert=true: assert the privileged call reverts for non-privileged caller.
+- For state-machine bugs: use vm.assume to establish precondition state, then assert expected behavior.
+- Keep setup minimal but compilable against the target repo's contracts and import paths.
+- Match the target repo's Solidity pragma version if inferable from affected_file path context.
+
+
+USER:
+Generate a Halmos test file for this finding.
+
+Finding ID: 2024-07-basin-H-01
+Title: Anyone can upgrade WellUpgradeable — missing onlyOwner on _authorizeUpgrade
+Repo URL: https://github.com/BeanstalkFarms/Basin
+Affected file: src/WellUpgradeable.sol
+Vulnerable commit: 85b2e8be59dbf51279075e2d560dd5e07b7cc06a
+
+Extracted spec (JSON):
+{
+  "finding_id": "2024-07-basin-H-01",
+  "spec_natural_language": "function upgradeTo MUST revert when called by any address that is not the contract owner",
+  "spec_type": "access_control",
+  "function_signature": "upgradeTo(address)",
+  "violated_invariant": {
+    "precondition": "msg.sender != owner()",
+    "should_revert": true,
+    "expected_behavior": "Only the owner should be able to upgrade the contract; all other callers must be rejected"
+  },
+  "halmos_property_sketch": "function check_upgradeTo_onlyOwner(address newImpl, address caller) public {\n    vm.assume(caller != wellUpgradeable.owner());\n    vm.prank(caller);\n    try wellUpgradeable.upgradeTo(newImpl) {\n        assert(false); // should have reverted\n    } catch {\n        // expected revert\n    }\n}",
+  "affected_function_lines": [
+    65,
+    65
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding explicitly states the invariant: 'For any caller C != owner, WellUpgradeable.upgradeTo(addr) must revert.' The report includes a PoC demonstrating that a non-owner can successfully call upgradeTo, and the fix adds the onlyOwner modifier to _authorizeUpgrade. The specification is unambiguous and directly testable.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-21T21:30:51.273185+00:00"
+}
+
+Contract/file to test: src/WellUpgradeable.sol
+Target function: upgradeTo(address)
+
+Output filename contract name: Test2024_07_basin_H_01
+
+Generate the complete .t.sol file only.

@@ -1,0 +1,12 @@
+{
+  "id": "2024-07-basin-H-01",
+  "title": "Anyone can upgrade WellUpgradeable — missing onlyOwner on _authorizeUpgrade",
+  "category": "access-control",
+  "severity": "high",
+  "repo_url": "https://github.com/code-423n4/2024-07-basin",
+  "vulnerable_commit": "7d5aacbb144d0ba0bc358dfde6e0cc913d25310e",
+  "fix_commit": null,
+  "affected_file": "src/WellUpgradeable.sol",
+  "bug_spec": "For any caller C != owner, WellUpgradeable.upgradeTo(addr) must revert.",
+  "issue_url": "https://github.com/code-423n4/2024-07-basin-findings/issues/52"
+}

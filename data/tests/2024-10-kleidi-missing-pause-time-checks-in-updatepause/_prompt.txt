@@ -1,0 +1,238 @@
+SYSTEM:
+You generate Halmos symbolic execution tests for Foundry that compile against REAL protocol repos.
+
+CANONICAL EXAMPLE (imports real contract from repo — NOT a mock copy):
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
+
+import {Test} from "forge-std/Test.sol";
+import {SymTest} from "halmos-cheatcodes/SymTest.sol";
+import {SetterTopNPoolsStrategy} from "contracts/SetterTopNPoolsStrategy.sol";
+
+/// Dependency stub only — NOT the contract under test.
+contract MockAVM {
+    uint256 public topN;
+    address public executor;
+    constructor(address _executor, uint256 _topN) { executor = _executor; topN = _topN; }
+}
+
+contract Test2025_05_blackhole_H_10 is Test, SymTest {
+    SetterTopNPoolsStrategy strategy;
+    address owner;
+
+    function setUp() public {
+        owner = makeAddr("owner");
+        MockAVM avm = new MockAVM(makeAddr("executor"), 10);
+        vm.prank(owner);
+        strategy = new SetterTopNPoolsStrategy(makeAddr("voter"), address(avm));
+    }
+
+    function check_ownerCanSetTopNPools() public {
+        vm.prank(owner);
+        address[] memory pools = new address[](0);
+        (bool success,) = address(strategy).call(
+            abi.encodeWithSelector(SetterTopNPoolsStrategy.setTopNPools.selector, pools)
+        );
+        assert(success);
+    }
+}
+
+
+CRITICAL RULES:
+- Output ONLY valid Solidity source. No markdown fences.
+- Import SymTest from "halmos-cheatcodes/SymTest.sol" (NOT halmos/SymTest.sol).
+- Import the REAL target contract: `import {ContractName} from "<affected_file_path>";`
+- NEVER define a mock/fake/stub copy of the contract under test (no MockVulnerable*, no reimplementing target functions).
+- Small dependency stubs (e.g. constructor deps like AVM) are OK if the real repo needs them — keep minimal.
+- Inherit Test, SymTest. Exactly ONE `check_*` function.
+- Use `svm.createAddress` for symbolic callers and `vm.assume` for constraints.
+- Assertion direction: property MUST hold on FIXED code (Halmos PASS), fail on VULNERABLE (Halmos FAIL).
+- Match pragma to target contract source when provided.
+- Use repo-relative import paths exactly as given (forward slashes).
+- Deploy/instantiate the real contract in setUp(); do not test against interfaces only unless unavoidable.
+
+
+USER:
+Generate a Halmos test file for this finding.
+
+Finding ID: 2024-10-kleidi-missing-pause-time-checks-in-updatepause
+Title: Missing Pause Time Checks in `_updatePauseDuration` Function
+Repo URL: https://github.com/code-423n4/2024-10-kleidi
+Affected file: src/ConfigurablePause.sol
+Import path: src/ConfigurablePause.sol
+Contract name: ConfigurablePause
+Vulnerable commit: ab89bcb443249e1524496b694ddb19e298dca799
+Pragma hint: 0.8.25
+
+Extracted spec:
+{
+  "finding_id": "2024-10-kleidi-missing-pause-time-checks-in-updatepause",
+  "spec_natural_language": "function _updatePauseDuration MUST revert when the contract is currently paused (pauseStartTime != 0 and within pause window)",
+  "spec_type": "state_machine",
+  "function_signature": "_updatePauseDuration(uint128)",
+  "violated_invariant": {
+    "precondition": "contract is currently paused (pauseStartTime != 0 and block.timestamp < pauseStartTime + pauseDuration)",
+    "should_revert": true,
+    "expected_behavior": "revert to prevent unintentional unpausing of the contract"
+  },
+  "halmos_property_sketch": "function check_updatePauseDuration_reverts_when_paused(uint128 newPauseDuration, uint128 currentPauseStart, uint128 currentPauseDuration) public {\n    // Setup: contract is paused\n    vm.assume(currentPauseStart != 0);\n    vm.assume(block.timestamp < currentPauseStart + currentPauseDuration);\n    _setPauseTime(currentPauseStart);\n    pauseDuration = currentPauseDuration;\n    \n    // Precondition: contract is paused\n    assert(paused());\n    \n    // Action: attempt to update pause duration\n    // This should revert when paused, but currently it doesn't\n    try this._updatePauseDuration(newPauseDuration) {\n        // If we reach here, the function did not revert - BUG\n        assert(false);\n    } catch {\n        // Expected: should revert when paused\n        assert(true);\n    }\n}",
+  "affected_function_lines": [
+    104,
+    119
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly describes that _updatePauseDuration lacks a whenNotPaused check, allowing it to reset pauseStartTime to 0 when the contract is already paused, effectively unpausing it. The invariant is explicit: the function should only be callable when not paused. The fix is explicitly provided with the whenNotPaused modifier.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:08:29.334420+00:00"
+}
+
+Target function: _updatePauseDuration(uint128)
+Precondition: contract is currently paused (pauseStartTime != 0 and block.timestamp < pauseStartTime + pauseDuration)
+should_revert: True
+
+REAL CONTRACT SOURCE (from repo at vulnerable commit):
+pragma solidity 0.8.25;
+
+/// naming: rename to pausable
+
+/// @notice possible states for this contract to be in:
+///     1. paused, pauseStartTime != 0, guardian == address(0)
+///     2. unpaused, pauseStartTime == 0, guardian != address(0)
+///     3. unpaused, pauseStartTime <= block.timestamp - pauseDuration, guardian == address(0)
+contract ConfigurablePause {
+    /// ---------------------------------------------------------
+    /// ---------------------------------------------------------
+    /// ------------------- STORAGE VARIABLES -------------------
+    /// ---------------------------------------------------------
+    /// ---------------------------------------------------------
+
+    /// @notice pause start time, starts at 0 so contract is unpaused
+    uint128 public pauseStartTime;
+
+    /// @notice pause duration
+    uint128 public pauseDuration;
+
+    /// @notice address of the pause guardian
+    address public pauseGuardian;
+
+    /// ---------------------------------------------------------
+    /// ---------------------------------------------------------
+    /// ------------------ CONSTANT VARIABLES -------------------
+    /// ---------------------------------------------------------
+    /// ---------------------------------------------------------
+
+    /// @notice minimum pause duration
+    uint256 public constant MIN_PAUSE_DURATION = 1 days;
+
+    /// @notice maximum pause duration
+    uint256 public constant MAX_PAUSE_DURATION = 30 days;
+
+    /// @notice emitted when the pause guardian is updated
+    /// @param oldPauseGuardian old pause guardian
+    /// @param newPauseGuardian new pause guardian
+    event PauseGuardianUpdated(
+        address indexed oldPauseGuardian, address indexed newPauseGuardian
+    );
+
+    /// @notice event emitted when pause start time is updated
+    /// @param newPauseStartTime new pause start time
+    event PauseTimeUpdated(uint256 indexed newPauseStartTime);
+
+    /// @notice event emitted when pause duration is updated
+    /// @param oldPauseDuration old pause duration
+    /// @param newPauseDuration new pause duration
+    event PauseDurationUpdated(
+        uint256 indexed oldPauseDuration, uint256 newPauseDuration
+    );
+
+    /// @dev Emitted when the pause is triggered by `account`.
+    event Paused(address indexed account);
+
+    /// @dev Modifier to make a function callable only when the contract is not paused.
+    modifier whenNotPaused() {
+        require(!paused(), "Pausable: paused");
+        _;
+    }
+
+    /// ------------- VIEW ONLY FUNCTIONS -------------
+
+    /// @notice return the current pause status
+    /// if pauseStartTime is 0, contract is not paused
+    /// if pauseStartTime is not 0, contract could be paused in the pauseDuration window
+    function paused() public view returns (bool) {
+        return block.timestamp <= pauseStartTime + pauseDuration;
+    }
+
+    /// ------------- PAUSE FUNCTION -------------
+
+    /// @notice pause the contracts, can only pause while the contracts are unpaused
+    /// uses up the pause, and starts the pause timer
+    /// calling removes the pause guardian
+    function pause() public virtual whenNotPaused {
+        /// if msg.sender == pause guardian, contract is not paused
+        /// this implies that pause is not used
+        require(
+            msg.sender == pauseGuardian,
+            "ConfigurablePauseGuardian: only pause guardian"
+        );
+
+        /// pause, set pauseStartTime to current block timestamp
+        /// safe unchecked downcast because maximum would be 2^128 - 1 which is
+        /// a very large number and very far in the future
+        _setPauseTime(uint128(block.timestamp));
+
+        address previousPauseGuardian = pauseGuardian;
+        /// kick the pause guardian
+        pauseGuardian = address(0);
+
+        emit PauseGuardianUpdated(previousPauseGuardian, address(0));
+        emit Paused(msg.sender);
+    }
+
+    /// ------------- INTERNAL/PRIVATE HELPERS -------------
+
+    /// @notice helper function to update the pause duration
+    /// should only be called when the contract is unpaused
+    /// @param newPauseDuration new pause duration
+    function _updatePauseDuration(uint128 newPauseDuration) internal {
+        require(
+            newPauseDuration >= MIN_PAUSE_DURATION
+                && newPauseDuration <= MAX_PAUSE_DURATION,
+            "ConfigurablePause: pause duration out of bounds"
+        );
+
+        /// if the contract was already paused, reset the pauseStartTime to 0
+        /// so that this function cannot pause the contract again
+        _setPauseTime(0);
+
+        uint256 oldPauseDuration = pauseDuration;
+        pauseDuration = newPauseDuration;
+
+        emit PauseDurationUpdated(oldPauseDuration, pauseDuration);
+    }
+
+    /// @notice helper function to update the pause start time. used to pause the contract
+    /// @param newPauseStartTime new pause start time
+    function _setPauseTime(uint128 newPauseStartTime) internal {
+        pauseStartTime = newPauseStartTime;
+
+        emit PauseTimeUpdated(newPauseStartTime);
+    }
+
+    /// @dev when a new guardian is granted, the contract is automatically unpaused
+    /// @notice grant pause guardian role to a new address
+    /// this should be done after the previous pause guardian has been kicked,
+    /// however there are no checks on this as only the owner will call this function
+    /// and the owner is assumed to be non-malicious
+    function _grantGuardian(address newPauseGuardian) internal {
+        address previousPauseGuardian = pauseGuardian;
+        pauseGuardian = newPauseGuardian;
+
+        emit PauseGuardianUpdated(previousPauseGuardian, newPauseGuardian);
+    }
+}
+
+
+Test contract name: Test2024_10_kleidi_missing_pause_time_checks_in_updatepause
+
+Generate the complete .t.sol file. Import the real contract at "src/ConfigurablePause.sol".

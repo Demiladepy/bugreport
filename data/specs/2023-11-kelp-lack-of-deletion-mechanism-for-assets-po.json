@@ -1,0 +1,20 @@
+{
+  "finding_id": "2023-11-kelp-lack-of-deletion-mechanism-for-assets-po",
+  "spec_natural_language": "function removeSupportedAsset(address) MUST exist and be callable by MANAGER role to remove a previously added asset from the supportedAssets list",
+  "spec_type": "access_control",
+  "function_signature": "addNewSupportedAsset(address,uint256)",
+  "violated_invariant": {
+    "precondition": "an asset has been added via addNewSupportedAsset and needs to be removed due to security concerns",
+    "should_revert": false,
+    "expected_behavior": "there should be a corresponding removeSupportedAsset function that allows authorized roles to remove assets, but no such function exists"
+  },
+  "halmos_property_sketch": "function check_assetRemovalMechanismExists(address asset, uint256 depositLimit) public {\n    // Setup: add an asset as manager\n    vm.prank(manager);\n    lrtConfig.addNewSupportedAsset(asset, depositLimit);\n    assert(lrtConfig.isSupportedAsset(asset));\n    \n    // Property: there should be a way to remove the asset\n    // This test documents the missing functionality\n    // A removeSupportedAsset function should exist and work\n    // vm.prank(manager);\n    // lrtConfig.removeSupportedAsset(asset);\n    // assert(!lrtConfig.isSupportedAsset(asset));\n    \n    // Currently: asset cannot be removed, this is the bug\n    // The test would FAIL because no removal function exists\n}",
+  "affected_function_lines": [
+    73,
+    75
+  ],
+  "extraction_confidence": "low",
+  "extraction_reasoning": "This finding describes missing functionality (lack of a removal function) rather than a bug in existing code. It's more of a design recommendation than a concrete invariant violation. There is no specific function whose behavior is incorrect - rather, a function that should exist does not exist. This makes it difficult to express as a formal property test since we cannot test the behavior of a non-existent function.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:08:38.925736+00:00"
+}

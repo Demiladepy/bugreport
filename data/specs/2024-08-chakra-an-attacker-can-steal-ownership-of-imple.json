@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-08-chakra-an-attacker-can-steal-ownership-of-imple",
+  "spec_natural_language": "function initialize MUST NOT succeed when called directly on the implementation contract (i.e., when implementation contract is already deployed but not accessed through proxy)",
+  "spec_type": "init_pattern",
+  "function_signature": "initialize(address,uint256)",
+  "violated_invariant": {
+    "precondition": "The implementation contract constructor has been executed (contract is deployed)",
+    "should_revert": true,
+    "expected_behavior": "Calling initialize on the implementation contract directly should revert because _disableInitializers() should have been called in the constructor"
+  },
+  "halmos_property_sketch": "function check_implementationCannotBeInitialized(address attacker, uint256 requiredValidators) public {\n    // Deploy implementation directly (not via proxy)\n    SettlementSignatureVerifier impl = new SettlementSignatureVerifier();\n    \n    // Attacker attempts to call initialize directly on implementation\n    vm.prank(attacker);\n    try impl.initialize(attacker, requiredValidators) {\n        // If initialize succeeds, the bug exists\n        assert(false); // SHOULD FAIL on buggy code\n    } catch {\n        // Initialize should revert - this is correct behavior\n        assert(true);\n    }\n}",
+  "affected_function_lines": [
+    10,
+    13
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly describes that the initialize() function on the implementation contract can be called by anyone because there is no constructor calling _disableInitializers(). The invariant is straightforward: implementation contracts using UUPS pattern must disable initialization in constructor to prevent direct initialization attacks.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:07:28.576066+00:00"
+}

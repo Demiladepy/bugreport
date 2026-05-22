@@ -1,0 +1,104 @@
+{
+  "runs": [
+    {
+      "finding_id": "2024-07-basin-H-01",
+      "targets_attempted": 6,
+      "targets_with_uups": 4,
+      "targets_compiled": 1,
+      "targets_halmos_completed": 0,
+      "potential_bugs_found": 0,
+      "target_statuses": [
+        {
+          "target_name": "openzeppelin-contracts-upgradeable",
+          "repo_url": "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable.git",
+          "ref": "master",
+          "uups_contracts_found": 4,
+          "adapted": false,
+          "adapted_contract": null,
+          "compiled": false,
+          "halmos_outcome": null,
+          "halmos_completed": false,
+          "skip_reason": "claude_skip_or_invalid_test",
+          "potential": false
+        },
+        {
+          "target_name": "Basin",
+          "repo_url": "https://github.com/BeanstalkFarms/Basin.git",
+          "ref": "master",
+          "uups_contracts_found": 8,
+          "adapted": true,
+          "adapted_contract": "src/WellUpgradeable.sol",
+          "compiled": true,
+          "halmos_outcome": "TIMEOUT",
+          "halmos_completed": false,
+          "skip_reason": "halmos_TIMEOUT",
+          "potential": false
+        },
+        {
+          "target_name": "pufETH",
+          "repo_url": "https://github.com/PufferFinance/pufETH.git",
+          "ref": "main",
+          "uups_contracts_found": 8,
+          "adapted": true,
+          "adapted_contract": "src/l2/xPufETH.sol",
+          "compiled": false,
+          "halmos_outcome": null,
+          "halmos_completed": false,
+          "skip_reason": "build_failed",
+          "potential": false
+        },
+        {
+          "target_name": "solady",
+          "repo_url": "https://github.com/Vectorized/solady.git",
+          "ref": "main",
+          "uups_contracts_found": 3,
+          "adapted": true,
+          "adapted_contract": "src/accounts/ERC4337.sol",
+          "compiled": false,
+          "halmos_outcome": null,
+          "halmos_completed": false,
+          "skip_reason": "build_failed",
+          "potential": false
+        },
+        {
+          "target_name": "solmate",
+          "repo_url": "https://github.com/transmissions11/solmate.git",
+          "ref": "main",
+          "uups_contracts_found": 0,
+          "adapted": false,
+          "adapted_contract": null,
+          "compiled": false,
+          "halmos_outcome": null,
+          "halmos_completed": false,
+          "skip_reason": "no_uups_contracts",
+          "potential": false
+        },
+        {
+          "target_name": "liquidity-pools",
+          "repo_url": "https://github.com/centrifuge/liquidity-pools.git",
+          "ref": "main",
+          "uups_contracts_found": 0,
+          "adapted": false,
+          "adapted_contract": null,
+          "compiled": false,
+          "halmos_outcome": null,
+          "halmos_completed": false,
+          "skip_reason": "no_uups_contracts",
+          "potential": false
+        }
+      ],
+      "findings": [],
+      "generated_at": "2026-05-22T23:03:05.717709+00:00"
+    }
+  ],
+  "generated_at": "2026-05-22T23:03:05.717709+00:00",
+  "latest": {
+    "finding_id": "2024-07-basin-H-01",
+    "targets_attempted": 6,
+    "targets_with_uups": 4,
+    "targets_compiled": 1,
+    "targets_halmos_completed": 0,
+    "potential_bugs_found": 0,
+    "generated_at": "2026-05-22T23:03:05.717709+00:00"
+  }
+}

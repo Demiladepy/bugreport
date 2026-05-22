@@ -1,0 +1,28 @@
+{
+  "finding_id": "2024-08-chakra-default-admin-role-not-revoked-on-owners",
+  "status": "INCONCLUSIVE",
+  "vulnerable_outcome": "ERROR",
+  "fix_outcome": "ERROR",
+  "vulnerable_result": {
+    "finding_id": "2024-08-chakra-default-admin-role-not-revoked-on-owners",
+    "commit_kind": "vulnerable",
+    "commit_sha": "d0d45ae1d26ca1b87034e67180fac07ce9642fd9",
+    "halmos_outcome": "ERROR",
+    "counterexamples": null,
+    "halmos_stdout": "Nothing to compile\nERROR    Build output parsing failed: FileNotFoundError: The build output       \n         directory                                                              \n         `C:\\Users\\User\\Desktop\\nothing\\bugreport\\data\\repos\\2024-08-chakra-defa\n         ult-admin-role-not-revoked-on-owners\\vulnerable\\out` does not exist    \n\n\n",
+    "duration_seconds": 7.99,
+    "ran_at": "2026-05-22T14:14:59.773381+00:00"
+  },
+  "fix_result": {
+    "finding_id": "2024-08-chakra-default-admin-role-not-revoked-on-owners",
+    "commit_kind": "fix",
+    "commit_sha": "f61c899c22492bdf5bdcb07cdb62ea9b4cd38825",
+    "halmos_outcome": "ERROR",
+    "counterexamples": null,
+    "halmos_stdout": "Nothing to compile\nERROR    Build output parsing failed: FileNotFoundError: The build output       \n         directory                                                              \n         `C:\\Users\\User\\Desktop\\nothing\\bugreport\\data\\repos\\2024-08-chakra-defa\n         ult-admin-role-not-revoked-on-owners\\fix\\out` does not exist           \n\n\n",
+    "duration_seconds": 7.22,
+    "ran_at": "2026-05-22T14:20:02.501690+00:00"
+  },
+  "notes": "vulnerable=ERROR, fix=ERROR",
+  "validated_at": "2026-05-22T14:21:57.058379+00:00"
+}

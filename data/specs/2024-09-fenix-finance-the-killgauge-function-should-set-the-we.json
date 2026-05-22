@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-09-fenix-finance-the-killgauge-function-should-set-the-we",
+  "spec_natural_language": "function killGauge(address) MUST set weightsPerEpoch[epochTimestamp][state.pool] to zero when killing a gauge to prevent double-subtraction and incorrect reward distribution",
+  "spec_type": "state_machine",
+  "function_signature": "killGauge(address)",
+  "violated_invariant": {
+    "precondition": "a gauge is being killed and has non-zero weightsPerEpoch",
+    "should_revert": false,
+    "expected_behavior": "weightsPerEpoch[epochTimestamp][state.pool] should be set to zero after subtracting from totalWeightsPerEpoch"
+  },
+  "halmos_property_sketch": "function check_killGauge_zeros_weights(address gauge) public {\n    // Setup: gauge exists and has non-zero weight\n    vm.assume(gaugesState[gauge].isGauge);\n    vm.assume(gaugesState[gauge].isAlive);\n    address pool = gaugesState[gauge].pool;\n    uint256 epochTs = _epochTimestamp();\n    uint256 weightBefore = weightsPerEpoch[epochTs][pool];\n    vm.assume(weightBefore > 0);\n    \n    // Action: kill the gauge as governance\n    vm.prank(governance);\n    killGauge(gauge);\n    \n    // Postcondition: weightsPerEpoch must be zero\n    uint256 weightAfter = weightsPerEpoch[epochTs][pool];\n    assert(weightAfter == 0);\n}",
+  "affected_function_lines": [
+    227,
+    241
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The report clearly identifies the specific function (killGauge) and the exact state variable (weightsPerEpoch) that should be zeroed but is not. The line numbers and fix are explicitly provided, making the invariant unambiguous.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:08:20.411970+00:00"
+}

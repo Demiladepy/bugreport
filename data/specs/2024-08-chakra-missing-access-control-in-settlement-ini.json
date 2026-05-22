@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-08-chakra-missing-access-control-in-settlement-ini",
+  "spec_natural_language": "function _Settlement_init() MUST NOT be callable by unauthorized users after the contract has been initialized",
+  "spec_type": "init_pattern",
+  "function_signature": "_Settlement_init(address,address[],uint256,string,uint256,address)",
+  "violated_invariant": {
+    "precondition": "contract has already been initialized or caller is not the deployer/authorized initializer",
+    "should_revert": true,
+    "expected_behavior": "The function should revert when called by any unauthorized user or when the contract is already initialized"
+  },
+  "halmos_property_sketch": "function check_settlement_init_cannot_be_reinitialized(address attacker, address owner, address[] memory managers, uint256 chainId, string memory chainName, uint256 requiredValidators, address signatureVerifier) public {\n    // Assume contract is already initialized (owner is set)\n    vm.assume(settlement.owner() != address(0));\n    vm.assume(attacker != settlement.owner());\n    \n    vm.prank(attacker);\n    try settlement._Settlement_init(owner, managers, chainId, chainName, requiredValidators, signatureVerifier) {\n        assert(false); // Should not succeed - reinitialization by attacker\n    } catch {\n        // Expected: should revert\n    }\n}",
+  "affected_function_lines": [
+    54,
+    70
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly identifies that _Settlement_init is public without access control, allowing any user to reinitialize the contract. The vulnerability is a classic initialization pattern issue where a public init function can be called multiple times by unauthorized users to manipulate owner and role assignments.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:07:11.614444+00:00"
+}

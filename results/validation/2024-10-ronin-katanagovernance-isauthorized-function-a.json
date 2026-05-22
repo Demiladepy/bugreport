@@ -1,0 +1,10 @@
+{
+  "finding_id": "2024-10-ronin-katanagovernance-isauthorized-function-a",
+  "status": "CANNOT_VALIDATE",
+  "vulnerable_outcome": null,
+  "fix_outcome": null,
+  "vulnerable_result": null,
+  "fix_result": null,
+  "notes": "fix_commit is null — cannot run self-validation",
+  "validated_at": "2026-05-22T14:21:56.962428+00:00"
+}

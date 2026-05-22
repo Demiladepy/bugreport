@@ -1,0 +1,89 @@
+SYSTEM:
+You generate Halmos symbolic execution tests for Foundry.
+
+CANONICAL EXAMPLE (missing onlyOwner access control):
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {Test} from "forge-std/Test.sol";
+import {SymTest} from "halmos/SymTest.sol";
+import {VulnerableVault} from "../src/VulnerableVault.sol";
+
+/// @notice Canonical Halmos access-control test: missing onlyOwner on withdraw.
+contract TestMissingOnlyOwner is Test, SymTest {
+    VulnerableVault vault;
+    address owner;
+    address attacker;
+
+    function setUp() public {
+        owner = makeAddr("owner");
+        attacker = svm.createAddress("attacker");
+        vm.assume(attacker != owner);
+        vm.startPrank(owner);
+        vault = new VulnerableVault();
+        vm.stopPrank();
+    }
+
+    /// @dev Property: non-owner withdraw MUST revert.
+    /// FAILS on vulnerable commit (withdraw succeeds for attacker).
+    /// PASSES on fixed commit (withdraw reverts).
+    function check_withdrawOnlyOwner(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(attacker != vault.owner());
+        vm.prank(attacker);
+        (bool success,) = address(vault).call(abi.encodeWithSignature("withdraw(uint256)", amount));
+        assert(!success);
+    }
+}
+
+
+Rules:
+- Output ONLY valid Solidity source. Start with `// SPDX-License-Identifier` and `pragma solidity`.
+- No markdown fences. No explanation.
+- Import `SymTest` from "halmos/SymTest.sol" and inherit `Test, SymTest`.
+- Write exactly ONE `check_*` function targeting the violated invariant.
+- Use symbolic callers: `address attacker = svm.createAddress("attacker");`
+- Use `vm.assume(attacker != owner)` (or equivalent) to constrain symbolic inputs.
+- The assertion must express what SHOULD hold on the FIXED code.
+  On the VULNERABLE commit Halmos must find a counterexample (test FAILS).
+  On the FIX commit Halmos must prove the property (test PASSES).
+- For access-control with should_revert=true: assert the privileged call reverts for non-privileged caller.
+- For state-machine bugs: use vm.assume to establish precondition state, then assert expected behavior.
+- Keep setup minimal but compilable against the target repo's contracts and import paths.
+- Match the target repo's Solidity pragma version if inferable from affected_file path context.
+
+
+USER:
+Generate a Halmos test file for this finding.
+
+Finding ID: 2025-05-blackhole-H-10
+Title: Misaligned access control on setTopNPools — owner locked out
+Repo URL: https://github.com/code-423n4/2025-05-blackhole
+Affected file: contracts/SetterTopNPoolsStrategy.sol
+Vulnerable commit: 92fff849d3b266e609e6d63478c4164d9f608e91
+
+Extracted spec (JSON):
+{
+  "finding_id": "2025-05-blackhole-H-10",
+  "spec_natural_language": "function setTopNPools MUST be callable by owner when caller is the contract owner",
+  "spec_type": "access_control",
+  "function_signature": "setTopNPools(address[])",
+  "violated_invariant": {
+    "precondition": "caller is the contract owner (not executor)",
+    "should_revert": false,
+    "expected_behavior": "function should execute successfully when called by owner"
+  },
+  "halmos_property_sketch": "function check_setTopNPools_owner_can_call(address[] calldata pools) public {\n    vm.prank(owner);\n    // Should not revert - owner should have access\n    try strategy.setTopNPools(pools) {\n        // success expected\n    } catch {\n        assert(false); // owner should be able to call\n    }\n}",
+  "affected_function_lines": null,
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly states the function uses onlyExecutor modifier but documentation indicates it should be callable by owner OR executor. The invariant is unambiguous: owner is incorrectly locked out of calling setTopNPools.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-21T21:30:57.369282+00:00"
+}
+
+Contract/file to test: contracts/SetterTopNPoolsStrategy.sol
+Target function: setTopNPools(address[])
+
+Output filename contract name: Test2025_05_blackhole_H_10
+
+Generate the complete .t.sol file only.

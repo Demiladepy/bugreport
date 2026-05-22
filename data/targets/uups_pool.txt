@@ -1,0 +1,8 @@
+# UUPS target pool for Basin upgradeTo spec generalization
+# Format: repo_url:ref
+https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable.git:master
+https://github.com/BeanstalkFarms/Basin.git:master
+https://github.com/PufferFinance/pufETH.git:main
+https://github.com/Vectorized/solady.git:main
+https://github.com/transmissions11/solmate.git:main
+https://github.com/centrifuge/liquidity-pools.git:main

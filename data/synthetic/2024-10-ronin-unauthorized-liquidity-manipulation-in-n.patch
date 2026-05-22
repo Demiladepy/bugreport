@@ -1,0 +1,10 @@
+--- a/src/periphery/NonfungiblePositionManager.sol
++++ b/src/periphery/NonfungiblePositionManager.sol
+@@ -247,6 +247,7 @@ contract NonfungiblePositionManager is
+     external
+     payable
+     override
++    isAuthorizedForToken(params.tokenId)
+     checkDeadline(params.deadline)
+     returns (uint128 liquidity, uint256 amount0, uint256 amount1)
+   {

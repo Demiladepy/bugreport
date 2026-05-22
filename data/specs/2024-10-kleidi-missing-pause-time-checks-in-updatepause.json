@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-10-kleidi-missing-pause-time-checks-in-updatepause",
+  "spec_natural_language": "function _updatePauseDuration MUST revert when the contract is currently paused (pauseStartTime != 0 and within pause window)",
+  "spec_type": "state_machine",
+  "function_signature": "_updatePauseDuration(uint128)",
+  "violated_invariant": {
+    "precondition": "contract is currently paused (pauseStartTime != 0 and block.timestamp < pauseStartTime + pauseDuration)",
+    "should_revert": true,
+    "expected_behavior": "revert to prevent unintentional unpausing of the contract"
+  },
+  "halmos_property_sketch": "function check_updatePauseDuration_reverts_when_paused(uint128 newPauseDuration, uint128 currentPauseStart, uint128 currentPauseDuration) public {\n    // Setup: contract is paused\n    vm.assume(currentPauseStart != 0);\n    vm.assume(block.timestamp < currentPauseStart + currentPauseDuration);\n    _setPauseTime(currentPauseStart);\n    pauseDuration = currentPauseDuration;\n    \n    // Precondition: contract is paused\n    assert(paused());\n    \n    // Action: attempt to update pause duration\n    // This should revert when paused, but currently it doesn't\n    try this._updatePauseDuration(newPauseDuration) {\n        // If we reach here, the function did not revert - BUG\n        assert(false);\n    } catch {\n        // Expected: should revert when paused\n        assert(true);\n    }\n}",
+  "affected_function_lines": [
+    104,
+    119
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly describes that _updatePauseDuration lacks a whenNotPaused check, allowing it to reset pauseStartTime to 0 when the contract is already paused, effectively unpausing it. The invariant is explicit: the function should only be callable when not paused. The fix is explicitly provided with the whenNotPaused modifier.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:08:29.334420+00:00"
+}

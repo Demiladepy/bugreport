@@ -1,0 +1,11 @@
+--- a/contracts/SetterTopNPoolsStrategy.sol
++++ b/contracts/SetterTopNPoolsStrategy.sol
+@@ -43,7 +43,7 @@ contract SetterTopNPoolsStrategy is ITopNPoolsStrategy, Ownable {
+     }
+ 
+     // Allows either the owner or the AVM to update top pools
+-    function setTopNPools(address[] memory _poolAddresses) external onlyExecutor {
++    function setTopNPools(address[] memory _poolAddresses) external onlyOwnerOrExecutor {
+         require(_poolAddresses.length <= topN, "Exceeds topN");
+ 
+         delete topNPools;

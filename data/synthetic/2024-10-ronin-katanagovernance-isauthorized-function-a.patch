@@ -1,0 +1,11 @@
+--- a/src/governance/KatanaGovernance.sol
++++ b/src/governance/KatanaGovernance.sol
+@@ -375,7 +375,7 @@ contract KatanaGovernance is OwnableUpgradeable, IKatanaGovernance {
+   function _isAuthorized(Permission storage $, address account) private view returns (bool) {
+     uint256 expiry = $.whitelistUntil;
+     if (expiry == UNAUTHORIZED) return false;
+-    if (expiry == AUTHORIZED || block.timestamp > expiry) return true;
++    if (expiry == AUTHORIZED || block.timestamp < expiry) return true;
+ 
+     return $.allowed[account];
+   }

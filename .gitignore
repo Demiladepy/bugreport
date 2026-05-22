@@ -1,0 +1,47 @@
+# --- Secrets & credentials ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+credentials*.json
+secrets.json
+secrets*.json
+*.secret
+*.secrets
+.netrc
+.npmrc
+.aws/
+.gnupg/
+
+# --- Local API / auth config ---
+.auth
+.auth.json
+config.local.json
+local.settings.json
+
+# --- Python ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+.envrc
+
+# --- Cloned repos & large local artifacts (may contain nested .env) ---
+data/repos/
+data/generalize/
+data/_tmp_basin
+data/_tmp_blackhole
+data/_tmp_*/
+
+# --- Local scratch / debug ---
+tmp/
+results/generalize/
+.DS_Store
+Thumbs.db
+
+# --- Pipeline run logs (may echo env or paths) ---
+results/runs.jsonl

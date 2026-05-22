@@ -1,0 +1,20 @@
+{
+  "finding_id": "2024-07-basin-H-01",
+  "spec_natural_language": "function upgradeTo(address) MUST revert when caller is not the owner",
+  "spec_type": "access_control",
+  "function_signature": "upgradeTo(address)",
+  "violated_invariant": {
+    "precondition": "msg.sender != owner()",
+    "should_revert": true,
+    "expected_behavior": "Only the owner should be able to upgrade the contract implementation; all other callers must be rejected"
+  },
+  "halmos_property_sketch": "function check_upgradeTo_onlyOwner(address newImpl, address caller) public {\n    vm.assume(caller != well.owner());\n    vm.prank(caller);\n    try well.upgradeTo(newImpl) {\n        assert(false); // should not succeed\n    } catch {\n        // expected revert\n    }\n}",
+  "affected_function_lines": [
+    65,
+    65
+  ],
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding explicitly states the invariant: 'For any caller C != owner, WellUpgradeable.upgradeTo(addr) must revert.' The report clearly identifies the missing onlyOwner modifier on _authorizeUpgrade which enables the upgradeTo function to be called by anyone. The PoC demonstrates a non-owner successfully calling upgradeTo.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:06:38.449793+00:00"
+}

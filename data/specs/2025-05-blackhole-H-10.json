@@ -1,0 +1,17 @@
+{
+  "finding_id": "2025-05-blackhole-H-10",
+  "spec_natural_language": "function setTopNPools MUST NOT revert when called by the owner",
+  "spec_type": "access_control",
+  "function_signature": "setTopNPools(address[])",
+  "violated_invariant": {
+    "precondition": "caller is the owner (msg.sender == owner())",
+    "should_revert": false,
+    "expected_behavior": "Owner should be allowed to call setTopNPools successfully, but current onlyExecutor modifier causes revert"
+  },
+  "halmos_property_sketch": "function check_setTopNPools_owner_access(address[] calldata pools) public {\n    // Setup: caller is owner\n    vm.assume(msg.sender == strategy.owner());\n    vm.assume(msg.sender != strategy.executor());\n    \n    // This should NOT revert - owner should have access\n    // Bug: onlyExecutor modifier blocks owner\n    strategy.setTopNPools(pools);\n    \n    // If we reach here, owner access is correctly allowed\n    assert(true);\n}",
+  "affected_function_lines": null,
+  "extraction_confidence": "high",
+  "extraction_reasoning": "The finding clearly states the intended behavior (callable by owner OR executor) and the bug (onlyExecutor modifier blocks owner). The access control violation is unambiguous - the modifier is too restrictive compared to documented/intended behavior.",
+  "model": "claude-opus-4-5",
+  "extracted_at": "2026-05-22T14:06:45.291722+00:00"
+}

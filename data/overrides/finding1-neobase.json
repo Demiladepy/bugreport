@@ -1,0 +1,12 @@
+{
+  "id": "2024-03-neobase-H-01",
+  "title": "Voting power lost on gauge removal — vote_for_gauge_weights(removedGauge, 0) reverts",
+  "category": "state-machine",
+  "severity": "high",
+  "repo_url": "https://github.com/code-423n4/2024-03-neobase",
+  "vulnerable_commit": "d6e6127e6763b93c23ee95cdf7622fe950d9ed30",
+  "fix_commit": null,
+  "affected_file": "src/GaugeController.sol",
+  "bug_spec": "For any user U who has voted for gauge G, vote_for_gauge_weights(G, 0) must succeed regardless of G's current state in gauge_types_.",
+  "issue_url": "https://github.com/code-423n4/2024-03-neobase-findings/issues/18"
+}
