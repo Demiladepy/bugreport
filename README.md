@@ -1,4 +1,10 @@
-# BugMine
+# Bugzy (BugMine)
+
+Mining executable security specifications from Code4rena audit findings, validated by symbolic execution (Halmos).
+
+**Headline:** 2/2 validated on decidable subset (100% precision); 2/20 end-to-end with curated tests. See [RESULTS.md](RESULTS.md).
+
+**Repo:** https://github.com/Demiladepy/bugreport
 
 See [PROJECT.md](PROJECT.md) for problem statement, scope, and deliverables.
 
