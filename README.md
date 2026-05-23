@@ -11,7 +11,7 @@
 | **Paper-style writeup** | [`RESULTS.md`](RESULTS.md) |
 | **Full benchmark JSON** | [`results/benchmark_run.json`](results/benchmark_run.json) |
 
----
+
 
 ## Abstract
 
@@ -50,7 +50,7 @@ These systems answer: *"What unknown bugs exist in this contract?"* Bugzy answer
 3. **RQ3 (Scale):** Where does the pipeline break when applied uniformly to N=20 findings without per-finding tuning?
 4. **RQ4 (Reuse):** Can validated specs transfer to unrelated contracts in the same vulnerability class?
 
----
+
 
 ## 2. Method
 
