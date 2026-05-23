@@ -106,10 +106,22 @@ We classify the 16 inconclusive findings honestly:
 |---|---|---|
 | `BUILD_FAILED` — import/submodule/solc | 8–10 | Llama (missing `forge-std`), Loopfi, Kleidi, Kelp |
 | `ERROR` — Halmos harness mismatch | 6 | Chakra cross-chain suite (wrong contract name, init setup) |
-| Missing commit metadata | 3–6 | Ronin (no fix_commit), TraitForge (checkout failures) |
-| Near-valid (bug caught, fix inconclusive) | 1 | Basin |
+| Missing commit metadata | 0 (Ronin resolved via synthetic patches) | TraitForge (checkout failures) |
+| Near-valid (bug caught, fix inconclusive) | 2 | Basin; Ronin NPM #67 (`FAIL` vuln / `ERROR` fix) |
 
-**Notably absent:** Halmos **timeouts** at 60s were **zero**. Failures are integration and setup, not solver budget.
+**Notably absent:** Halmos **timeouts** at 60s were rare in bulk; Ronin NFPM duplicate hit one `TIMEOUT` on vulnerable after curated harness work.
+
+### Ronin re-validation (batch 3)
+
+Three Ronin access-control findings previously blocked on missing `fix_commit` and Windows clone failures (`:` in Foundry storage-log paths). We added synthetic fix patches, WSL-based clone export, curated Halmos tests, and dependency patching for `katana-operation-contracts`.
+
+| Finding | Vuln | Fix | Status |
+|---|---|---|---|
+| `2024-10-ronin-missing-authorization-check-in-increasel` | FAIL | ERROR | INCONCLUSIVE (near-valid) |
+| `2024-10-ronin-unauthorized-liquidity-manipulation-in-n` | TIMEOUT | ERROR | INCONCLUSIVE |
+| `2024-10-ronin-katanagovernance-isauthorized-function-a` | FAIL | FAIL | SPEC_TOO_STRICT (builds; Halmos harness needs tuning) |
+
+NPM tests use `deployCode` to load 0.7.6 `NonfungiblePositionManager` from a prebuilt artifact without mixed-pragma imports. Governance builds after patching missing `dependencies/@openzeppelin-contracts-4.7.0` from `lib/`.
 
 ### Comparison to ACToolBench
 

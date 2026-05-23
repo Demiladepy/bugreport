@@ -1,13 +1,13 @@
 {
   "corpus_size": 20,
   "ingestion": {
-    "all_4_fields_resolved": 14,
-    "missing_fix_commit": 3,
+    "all_4_fields_resolved": 17,
+    "missing_fix_commit": 0,
     "missing_vulnerable_commit": 3,
     "auto_resolve_rate_per_field": {
       "repo_url": 1.0,
       "vulnerable_commit": 0.85,
-      "fix_commit": 0.85,
+      "fix_commit": 1.0,
       "affected_file": 1.0
     }
   },
@@ -27,29 +27,29 @@
     "failed_invalid_solidity": 0
   },
   "verify_vulnerable": {
-    "attempted": 13,
-    "fail_as_expected": 2,
+    "attempted": 16,
+    "fail_as_expected": 4,
     "pass_unexpected": 0,
     "build_failed": 5,
-    "halmos_timeout": 0,
+    "halmos_timeout": 1,
     "halmos_error": 6
   },
   "verify_fix": {
-    "attempted": 17,
+    "attempted": 20,
     "pass_as_expected": 1,
-    "fail_unexpected": 0,
+    "fail_unexpected": 1,
     "build_failed": 8,
     "halmos_timeout": 0,
-    "no_fix_commit": 3
+    "no_fix_commit": 0
   },
   "validation": {
     "validated": 1,
     "spec_too_weak": 0,
-    "spec_too_strict": 0,
-    "inconclusive": 16,
-    "cannot_validate_no_fix": 3
+    "spec_too_strict": 1,
+    "inconclusive": 18,
+    "cannot_validate_no_fix": 0
   },
-  "validation_rate_on_decidable": 1.0,
+  "validation_rate_on_decidable": 0.5,
   "end_to_end_completion_rate": 0.05,
-  "generated_at": "2026-05-22T14:21:59.918677+00:00"
+  "generated_at": "2026-05-23T17:59:10.439249+00:00"
 }

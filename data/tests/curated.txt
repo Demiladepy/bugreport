@@ -1,2 +1,5 @@
 2024-07-basin-H-01
 2025-05-blackhole-H-10
+2024-10-ronin-missing-authorization-check-in-increasel
+2024-10-ronin-unauthorized-liquidity-manipulation-in-n
+2024-10-ronin-katanagovernance-isauthorized-function-a

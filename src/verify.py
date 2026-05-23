@@ -41,8 +41,22 @@ Outcome = Literal["PASS", "FAIL", "TIMEOUT", "BUILD_FAILED", "ERROR"]
 
 VERIFY_DIR = ROOT / "results" / "verify"
 HALMOS_TIMEOUT_S = 60
-SOLC_VERSIONS = ("0.8.13", "0.8.19", "0.8.20")
+SOLC_VERSIONS = ("0.7.6", "0.8.13", "0.8.19", "0.8.20")
 SYNTHETIC_DIR = ROOT / "data" / "synthetic"
+
+
+def _ensure_foundry_svm_versions() -> None:
+    """Mirror flat solc downloads into Foundry's ~/.svm/<version>/ layout."""
+    svm_dir = Path.home() / ".svm"
+    for version in SOLC_VERSIONS:
+        flat = svm_dir / f"solc-{version}.exe"
+        if not flat.exists():
+            continue
+        version_dir = svm_dir / version
+        version_dir.mkdir(parents=True, exist_ok=True)
+        dest = version_dir / f"solc-{version}"
+        if not dest.exists():
+            shutil.copy2(flat, dest)
 
 
 def ensure_solc(repo: Path | None = None) -> None:
@@ -61,6 +75,14 @@ def ensure_solc(repo: Path | None = None) -> None:
             urllib.request.urlretrieve(url, dest)
         except Exception as exc:
             console.print(f"  [yellow]solc {version} download failed: {exc}[/yellow]")
+
+    _ensure_foundry_svm_versions()
+
+    if repo is not None:
+        toml = repo / "foundry.toml"
+        if toml.exists() and "auto_detect_solc" in toml.read_text(encoding="utf-8"):
+            os.environ.pop("FOUNDRY_SOLC", None)
+            return
 
     version = _repo_solc_version(repo) if repo else SOLC_VERSIONS[-1]
     solc_bin = svm_dir / f"solc-{version}.exe"
@@ -132,26 +154,126 @@ def resolve_commit(finding, commit_kind: CommitKind) -> str:
     return finding.fix_commit
 
 
+def _wsl_path(path: Path) -> str:
+    resolved = path.resolve()
+    drive = resolved.drive.rstrip(":").lower()
+    rest = resolved.as_posix().split(":", 1)[1]
+    return f"/mnt/{drive}{rest}"
+
+
+def _needs_wsl_clone(repo_url: str) -> bool:
+    # Ronin repos track Foundry storage logs with ':' in paths — invalid on NTFS.
+    return sys.platform == "win32" and "ronin-chain" in repo_url
+
+
+def _checkout_commit(repo: Path, commit_sha: str) -> None:
+    subprocess.run(["git", "fetch", "origin", commit_sha], cwd=repo, check=False, capture_output=True, text=True)
+    proc = subprocess.run(["git", "checkout", commit_sha], cwd=repo, capture_output=True, text=True)
+    if proc.returncode != 0:
+        subprocess.run(["git", "fetch", "--unshallow"], cwd=repo, check=False, capture_output=True)
+        subprocess.run(["git", "fetch", "origin", commit_sha], cwd=repo, check=False, capture_output=True, text=True)
+        subprocess.run(["git", "checkout", commit_sha], cwd=repo, check=True, capture_output=True, text=True)
+
+
+def clone_repo_wsl(repo_url: str, dest: Path, commit_sha: str) -> None:
+    wsl_dest = _wsl_path(dest)
+    wsl_tmp = f"/tmp/bugzy-clone-{dest.name}-{commit_sha[:8]}"
+    if dest.exists():
+        shutil.rmtree(dest, ignore_errors=True)
+    dest.mkdir(parents=True, exist_ok=True)
+    script = f"""
+set -euo pipefail
+rm -rf '{wsl_tmp}'
+git clone '{repo_url}' '{wsl_tmp}'
+cd '{wsl_tmp}'
+git fetch origin '{commit_sha}' || true
+git checkout '{commit_sha}'
+git submodule update --init --recursive
+tar -cf - --exclude=logs -C '{wsl_tmp}' . | tar -xf - -C '{wsl_dest}'
+"""
+    proc = subprocess.run(
+        ["wsl", "-d", "Ubuntu", "--", "bash", "-lc", script],
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0 and "Ubuntu" in (proc.stderr or ""):
+        proc = subprocess.run(
+            ["wsl", "--", "bash", "-lc", script],
+            capture_output=True,
+            text=True,
+        )
+    if proc.returncode != 0:
+        raise RuntimeError(f"WSL clone failed:\n{proc.stderr}\n{proc.stdout}")
+    if not (dest / ".git").exists():
+        raise RuntimeError(f"WSL clone did not produce a git repo at {dest}")
+
+
 def clone_repo(repo_url: str, dest: Path, commit_sha: str) -> None:
+    if _needs_wsl_clone(repo_url):
+        console.print("  [dim]clone via WSL (Windows-incompatible paths in repo)...[/dim]")
+        clone_repo_wsl(repo_url, dest, commit_sha)
+        return
+
     if dest.exists() and (dest / ".git").exists():
         subprocess.run(["git", "fetch", "--all"], cwd=dest, check=False, capture_output=True)
-        proc = subprocess.run(["git", "checkout", commit_sha], cwd=dest, capture_output=True, text=True)
-        if proc.returncode != 0:
-            subprocess.run(["git", "fetch", "--unshallow"], cwd=dest, check=False, capture_output=True)
-            subprocess.run(["git", "checkout", commit_sha], cwd=dest, check=True, capture_output=True, text=True)
+        _checkout_commit(dest, commit_sha)
     else:
         dest.parent.mkdir(parents=True, exist_ok=True)
+        if dest.exists():
+            shutil.rmtree(dest, ignore_errors=True)
         subprocess.run(
             ["git", "clone", repo_url, str(dest)],
             check=True,
             capture_output=True,
             text=True,
         )
-        proc = subprocess.run(["git", "checkout", commit_sha], cwd=dest, capture_output=True, text=True)
-        if proc.returncode != 0:
-            subprocess.run(["git", "fetch", "--unshallow"], cwd=dest, check=False, capture_output=True)
-            subprocess.run(["git", "checkout", commit_sha], cwd=dest, check=True, capture_output=True, text=True)
+        _checkout_commit(dest, commit_sha)
     subprocess.run(["git", "submodule", "update", "--init", "--recursive"], cwd=dest, check=False, capture_output=True)
+
+
+def _patch_already_applied(text: str, patch_text: str) -> bool:
+    added = [ln[1:] for ln in patch_text.splitlines() if ln.startswith("+") and not ln.startswith("+++")]
+    added = [fragment.strip() for fragment in added if fragment.strip()]
+    if not added:
+        return False
+    if "function increaseLiquidity" in patch_text or any("isAuthorizedForToken" in fragment for fragment in added):
+        match = re.search(r"function increaseLiquidity[\s\S]*?\{", text)
+        if match:
+            return all(fragment in match.group(0) for fragment in added)
+    if "_isAuthorized" in patch_text:
+        match = re.search(r"function _isAuthorized[\s\S]*?\n\s*\}", text)
+        if match:
+            return all(fragment in match.group(0) for fragment in added)
+    return False
+
+
+def _manual_apply_patch(text: str, patch_text: str) -> str:
+    removed = [ln[1:] for ln in patch_text.splitlines() if ln.startswith("-") and not ln.startswith("---")]
+    added = [ln[1:] for ln in patch_text.splitlines() if ln.startswith("+") and not ln.startswith("+++")]
+    if len(removed) == 1 and len(added) == 1 and removed[0] in text:
+        return text.replace(removed[0], added[0], 1)
+    if len(added) == 1 and len(removed) == 0:
+        needle = "checkDeadline(params.deadline)"
+        insert = added[0].strip()
+        if needle in text:
+            header = text.split("function increaseLiquidity", 1)[1].split("{", 1)[0]
+            if insert not in header:
+                return text.replace(f"    {needle}", f"    {insert}\n    {needle}", 1)
+    raise RuntimeError("unsupported synthetic patch format for manual apply")
+
+
+def _adapt_test_source(test_src: str, repo: Path) -> str:
+    if "halmos-cheatcodes/SymTest.sol" in test_src:
+        return test_src
+    repo_solc = _repo_solc_version(repo)
+    if repo_solc.startswith("0.7."):
+        test_src = re.sub(
+            r"pragma solidity \^0\.8\.\d+;",
+            f"pragma solidity ^{repo_solc};",
+            test_src,
+            count=1,
+        )
+    return test_src
 
 
 def apply_synthetic_patch(finding_id: str, repo: Path, *, affected_file: str | None = None) -> None:
@@ -159,7 +281,7 @@ def apply_synthetic_patch(finding_id: str, repo: Path, *, affected_file: str | N
     if not patch.exists():
         raise FileNotFoundError(f"Synthetic patch not found: {patch}")
     proc = subprocess.run(
-        ["git", "apply", str(patch)],
+        ["git", "apply", "--whitespace=nowarn", str(patch)],
         cwd=repo,
         capture_output=True,
         text=True,
@@ -171,12 +293,44 @@ def apply_synthetic_patch(finding_id: str, repo: Path, *, affected_file: str | N
             raise RuntimeError(f"git apply failed: {proc.stderr}\n{proc.stdout}")
         text = target.read_text(encoding="utf-8")
         patch_text = patch.read_text(encoding="utf-8")
-        if "+" in patch_text:
-            added = [ln[1:] for ln in patch_text.splitlines() if ln.startswith("+") and not ln.startswith("+++")]
-            if added and all(fragment.strip() in text for fragment in added if fragment.strip()):
-                console.print("  [dim]synthetic patch already applied[/dim]")
-                return
-        raise RuntimeError(f"git apply failed: {proc.stderr}\n{proc.stdout}")
+        if _patch_already_applied(text, patch_text):
+            console.print("  [dim]synthetic patch already applied[/dim]")
+            return
+        updated = _manual_apply_patch(text, patch_text)
+        target.write_text(updated, encoding="utf-8")
+        console.print("  [dim]applied synthetic fix patch (manual fallback)[/dim]")
+
+
+def ensure_ronin_operation_deps(repo: Path) -> None:
+    """katana-operation-contracts remaps @openzeppelin-contracts-4.7.0 but omits the vendored copy."""
+    remappings = repo / "remappings.txt"
+    if not remappings.exists() or "@openzeppelin-contracts-4.7.0" not in remappings.read_text(encoding="utf-8"):
+        return
+    dep = repo / "dependencies" / "@openzeppelin-contracts-4.7.0"
+    if dep.exists():
+        return
+    oz = repo / "lib" / "openzeppelin-contracts"
+    if not oz.exists():
+        return
+    dep.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(oz, dep, dirs_exist_ok=True)
+    console.print("  [dim]patched dependencies/@openzeppelin-contracts-4.7.0 from lib[/dim]")
+
+
+RONIN_NPM_FINDINGS = frozenset({
+    "2024-10-ronin-missing-authorization-check-in-increasel",
+    "2024-10-ronin-unauthorized-liquidity-manipulation-in-n",
+})
+
+
+def _prebuild_ronin_artifacts(repo: Path, finding_id: str) -> None:
+    if finding_id not in RONIN_NPM_FINDINGS:
+        return
+    nfpm = repo / "src" / "periphery" / "NonfungiblePositionManager.sol"
+    if not nfpm.exists():
+        return
+    console.print("  [dim]prebuild NFPM artifact for deployCode...[/dim]")
+    run_cmd(["forge", "build", "src/periphery/NonfungiblePositionManager.sol"], cwd=repo, timeout=600)
 
 
 def _append_halmos_remapping(repo: Path) -> None:
@@ -191,8 +345,26 @@ def _append_halmos_remapping(repo: Path) -> None:
 
 
 def ensure_foundry_layout(repo: Path) -> None:
+    foundry = repo / "foundry.toml"
+    if foundry.exists() and (repo / "src").is_dir():
+        text = foundry.read_text(encoding="utf-8")
+        if "auto_detect_solc" not in text:
+            if "[profile.default]" in text:
+                text = text.replace(
+                    "[profile.default]",
+                    "[profile.default]\nauto_detect_solc = true",
+                    1,
+                )
+            else:
+                text = "auto_detect_solc = true\n" + text
+        if "auto_detect_solc = true" in text:
+            text = re.sub(r"^\s*solc\s*=\s*['\"][^'\"]+['\"]\s*\n", "", text, flags=re.MULTILINE)
+        foundry.write_text(text, encoding="utf-8")
+        _append_halmos_remapping(repo)
+        return
+
     is_hardhat = (repo / "hardhat.config.js").exists() or (repo / "hardhat.config.ts").exists()
-    if (repo / "foundry.toml").exists() and not is_hardhat:
+    if foundry.exists() and not is_hardhat:
         _append_halmos_remapping(repo)
         return
 
@@ -298,6 +470,7 @@ def ensure_halmos_cheatcodes(repo: Path) -> None:
 
 def forge_install(repo: Path) -> None:
     ensure_foundry_layout(repo)
+    ensure_ronin_operation_deps(repo)
     if (repo / "foundry.toml").exists() or (repo / "lib" / "forge-std").exists():
         run_cmd(["forge", "install"], cwd=repo, timeout=600)
     run_cmd(["git", "submodule", "update", "--init", "--recursive"], cwd=repo, timeout=600)
@@ -305,13 +478,16 @@ def forge_install(repo: Path) -> None:
 
 
 def forge_build(repo: Path, *, force: bool = False) -> tuple[bool, str, str]:
-    cmd = ["forge", "build"]
-    if force:
-        cmd.append("--force")
-    proc = run_cmd(cmd, cwd=repo, timeout=600)
+    force_args = ["--force"] if force else []
+    scoped_paths = ["test/bugzy"]
+    for extra in ([], ["--via-ir"]):
+        proc = run_cmd(["forge", "build", *scoped_paths, *extra, *force_args], cwd=repo, timeout=600)
+        if proc.returncode == 0:
+            return True, proc.stdout, proc.stderr
+    proc = run_cmd(["forge", "build", *force_args], cwd=repo, timeout=600)
     if proc.returncode == 0:
         return True, proc.stdout, proc.stderr
-    proc2 = run_cmd(["forge", "build", "--via-ir", *(["--force"] if force else [])], cwd=repo, timeout=600)
+    proc2 = run_cmd(["forge", "build", "--via-ir", *force_args], cwd=repo, timeout=600)
     return proc2.returncode == 0, proc2.stdout + proc.stdout, proc2.stderr + proc.stderr
 
 
@@ -323,7 +499,8 @@ def copy_test(repo: Path, finding_id: str) -> Path:
     dest_dir = test_root / "bugzy"
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / f"{test_contract_name(finding_id)}.t.sol"
-    dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    test_src = _adapt_test_source(src.read_text(encoding="utf-8"), repo)
+    dest.write_text(test_src, encoding="utf-8")
     return dest
 
 
@@ -538,6 +715,7 @@ def verify_one(finding_id: str, commit_kind: CommitKind, *, dry_run: bool = Fals
     dest = copy_test(workdir, finding_id)
     rel_test = dest.relative_to(workdir)
 
+    _prebuild_ronin_artifacts(workdir, finding_id)
     built, build_out, build_err = forge_build(workdir, force=False)
     if not built:
         console.print("  [red]BUILD_FAILED[/red]")
