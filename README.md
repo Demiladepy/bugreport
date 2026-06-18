@@ -1,4 +1,4 @@
-# Bugzy: Mining Executable Security Specifications from Audit Findings
+# Bugmine: Mining Executable Security Specifications from Audit Findings
 
 **A commit-grounded pipeline for turning Code4rena access-control reports into self-validated Halmos property tests.**
 
